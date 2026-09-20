@@ -1,16 +1,17 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 21:36 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { dispatch, parseArgs } from "../src/cli/index.ts";
 import { collectStatus } from "../src/cli/status.ts";
-import { type TempHome, useTempHome } from "./helpers.ts";
+import { type TempHome, useTempConfig, useTempHome } from "./helpers.ts";
 
 let home: TempHome;
 
 beforeEach(() => {
   home = useTempHome();
+  useTempConfig(home);
 });
 
 afterEach(() => {

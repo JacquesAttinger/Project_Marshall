@@ -1,24 +1,26 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 21:36 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { ConfigError, loadConfig, loadEnv, parseConfig, resolveConfigPath } from "../src/config.ts";
+import {
+  ConfigError,
+  DEFAULT_CONFIG_PATH,
+  loadConfig,
+  loadEnv,
+  parseConfig,
+  resolveConfigPath,
+} from "../src/config.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
 
 let home: TempHome;
-let previousConfigEnv: string | undefined;
 
 beforeEach(() => {
   home = useTempHome();
-  previousConfigEnv = process.env.MARSHALL_CONFIG;
-  delete process.env.MARSHALL_CONFIG;
 });
 
 afterEach(() => {
-  if (previousConfigEnv === undefined) delete process.env.MARSHALL_CONFIG;
-  else process.env.MARSHALL_CONFIG = previousConfigEnv;
   home.restore();
 });
 
@@ -96,9 +98,13 @@ describe("loadConfig", () => {
     expect(() => loadConfig(path)).toThrow(/not valid JSON/);
   });
 
-  test("the committed marshall.config.json is valid", () => {
-    const config = loadConfig();
+  test("the committed marshall.config.json is valid apart from the machine-specific repoPath", () => {
+    // CI has no ~/code/ChessBuddy, so swap repoPath for a directory that exists everywhere.
+    const raw = JSON.parse(readFileSync(DEFAULT_CONFIG_PATH, "utf8"));
+    expect(raw.repoPath).toBe("~/code/ChessBuddy");
+    const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
     expect(config.workspace).toBe("chessbuddy");
+    expect(config.maxAgents).toBe(2);
   });
 });
 
