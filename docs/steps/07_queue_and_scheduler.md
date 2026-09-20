@@ -1,6 +1,6 @@
 # Step 07 — Queue and Scheduler
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 15:05 CDT -->
 
 **TLDR:** The part that looks at Linear every minute, decides which issue is next, checks that the caps allow a start, claims it, creates its worktree, and hands it to a master agent.
 It also cleans up after a crash.
@@ -60,10 +60,14 @@ Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_marshall
 - Killing the orchestrator mid-run and restarting it releases the dead claim and leaves Linear consistent.
 - `marshall queue` output matches what the loop would do next.
 
-## Open questions for grilling
+## Open questions for grilling (closed 2026-09-20)
 
 1. Daily cap on a calendar day, or on a rolling 24 hours?
 2. ~~When the overlap check is unsure, allow or wait?~~ Moot: no overlap check in iteration 1 (see step 08, Rebasing).
 3. On reconcile, resume the dead agent (step 08) or release to Todo? The spec says resume up to 2 times; decide who owns that counter.
 4. Should the scheduler create the worktree, or should step 08 do it as the first phase? Scheduler is simpler for reconcile; step 08 keeps all per-issue work in one place.
 5. Should a bounce count against the daily and window caps? It is a new start in terms of Max usage.
+
+Answers: (1) calendar day in local time, counted from `starts` rows dated today, reset at local midnight; (3) resume through a step 08 hook, `hooks.resume(claim)`, while `claims.resumes < maxResumes`, and that one counter serves boot resumes and in-run resumes, with a default hook that releases to Todo until step 08 lands; (4) the scheduler creates the worktree and hands `startMasterAgent(claim)` a ready workspace, so step 08 never runs `git worktree`; (5) no, only a first-time start inserts a `starts` row, so bounces and resumes skip the daily and window caps, but the concurrency cap applies to every launch.
+The pause flag is `pause_until` in a key-value `flags` table (migration 003): step 08 sets an ISO timestamp on a rate limit, the scheduler polls but does not start while `now < pause_until`, and the flag clears itself by time.
+Full plan: [`../step_07_queue_scheduler_plan.md`](../step_07_queue_scheduler_plan.md).
