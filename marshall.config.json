@@ -18,5 +18,11 @@
     "classifier": "haiku",
     "planSimple": "opus",
     "planComplex": "fable"
-  }
+  },
+  "services": {
+    "POSTGRES_HOST_PORT": 5432,
+    "ELASTICMQ_HOST_PORT": 9324,
+    "API_HOST_PORT": 8000
+  },
+  "portOffsetPerSlot": 100
 }
