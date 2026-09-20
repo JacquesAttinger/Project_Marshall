@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:40 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // `marshall status [--json]` — config, state dir, schema version, and row counts.
 
 import { existsSync } from "node:fs";

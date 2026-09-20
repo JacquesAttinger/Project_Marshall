@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 11:10 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Renders an IssueDetail to the Markdown brief a planner agent reads. The brief is the agent's only
 // source for the issue: facts only, no instructions (those live in skills/plan/SKILL.md).
 

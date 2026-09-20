@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:50 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // launch / resume / kill around `claude --bg`. The run id is minted before the spawn because the
 // hook command (which names the events file) must exist before the daemon's job id does.
 

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 11:40 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // The Haiku complexity classifier. One `claude -p` call with a JSON schema, no tools, no MCP, no
 // repo access. Complexity alone picks the planner model; priority is an input, never an override.
 

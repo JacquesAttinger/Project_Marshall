@@ -1,5 +1,5 @@
 #!/bin/sh
-# Last edited: 2026-09-20 11:40 CDT
+# Last edited: 2026-09-20 10:56 CDT
 # A stand-in for the `claude` binary. Tests point MARSHALL_CLAUDE_BIN here.
 #   FAKE_CLAUDE_DIR   where to record calls and read canned output (required)
 #   --bg ...          appends argv to calls.log, prints "Started <id>" (id from next-id, else fa4e0001);

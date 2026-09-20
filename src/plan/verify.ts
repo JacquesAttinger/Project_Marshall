@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 11:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // The write boundary, checked after the fact: the planner ran with bypassPermissions, so git is the
 // proof that it changed nothing but the plan file. Fresh mode expects exactly one commit ahead of the
 // base touching exactly one docs/*_plan.md. Revise mode expects the newest commit to touch only that.

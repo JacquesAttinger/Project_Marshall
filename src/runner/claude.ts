@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:30 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // The one place that spawns the `claude` binary. Tests point MARSHALL_CLAUDE_BIN at a shim.
 
 import { existsSync } from "node:fs";

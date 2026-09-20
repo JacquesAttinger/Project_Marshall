@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 11:00 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // The plan file's required sections and the heading check that enforces them. Pure text functions,
 // so the tests pass strings. The template the agent copies is skills/plan/template.md.
 

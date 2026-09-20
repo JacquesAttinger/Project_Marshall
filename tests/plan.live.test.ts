@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 13:00 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Live classifier test against the real Haiku. Skipped unless MARSHALL_LIVE=1.
 // Run: MARSHALL_LIVE=1 bun test tests/plan.live.test.ts
 // Uses the real `claude` login and a temp MARSHALL_HOME as the classifier's cwd.

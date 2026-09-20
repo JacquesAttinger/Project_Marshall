@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:50 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Every path Marshall writes to derives from one root: MARSHALL_HOME or ~/.marshall.
 // Paths under the Claude daemon's home (CLAUDE_CONFIG_DIR or ~/.claude) are read-only for us.
 

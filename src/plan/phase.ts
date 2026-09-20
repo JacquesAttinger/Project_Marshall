@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:10 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // runPlanPhase: classify → brief → launch the planner → wait → verify with git → check headings →
 // post the summary to Linear. Each step is small; the phase reads top to bottom.
 

@@ -1,6 +1,6 @@
 # Step 04 — Planning Phase — Implementation Plan
 
-<!-- Last edited: 2026-09-20 10:25 CDT -->
+<!-- Last edited: 2026-09-20 10:56 CDT -->
 
 **TLDR:** Build the part of Marshall that turns a Linear issue into a plan file with no human in the loop.
 A cheap Haiku call says "simple" or "complex" and that picks Opus or Fable.

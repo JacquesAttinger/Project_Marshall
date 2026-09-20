@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:10 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // The Linear comment the orchestrator posts after a plan lands: TLDR, decisions, where to look.
 // LinearClient.comment appends the Marshall footer, so it is not added here.
 

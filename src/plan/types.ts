@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:55 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Public shapes for the planning phase. Step 08 builds a PlanPhaseInput and reads the result.
 
 import type { Database } from "bun:sqlite";

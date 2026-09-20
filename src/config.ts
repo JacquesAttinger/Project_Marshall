@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:35 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Typed loaders for marshall.config.json (committed) and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:45 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // `marshall plan <identifier> --cwd <worktree> [--revise] [--json]` runs the planning phase by hand
 // on an issue, in a worktree the caller already made. `marshall plan check <file>` is the heading
 // check alone. Both exist for the recorded example run and for manual tests; step 08 calls the API.

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:45 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Hand-rolled dispatch. No CLI dependency. `bin/marshall` imports this file.
 
 import { runMigrate } from "./db.ts";

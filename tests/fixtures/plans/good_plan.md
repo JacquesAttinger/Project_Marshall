@@ -1,6 +1,6 @@
 # Fix castling through check
 
-<!-- Last edited: 2026-09-20 11:00 CDT -->
+<!-- Last edited: 2026-09-20 10:56 CDT -->
 
 **TLDR:** The king can castle while a square it crosses is attacked.
 The move generator skips the attack check for the middle square.

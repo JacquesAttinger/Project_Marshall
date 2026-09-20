@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // runPlanPhase end to end with the fake claude shim: its --bg branch runs a script that plays the
 // planner (writes the plan file and commits), then the test appends the Stop hook line and the
 // watcher finishes the run. A fake Linear client records the comment.

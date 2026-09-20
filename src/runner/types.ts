@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:50 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";

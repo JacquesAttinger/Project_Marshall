@@ -4,7 +4,7 @@ description: Autonomous planner for Marshall. Reads a brief file, explores the r
 disable-model-invocation: true
 ---
 
-<!-- Last edited: 2026-09-20 12:00 CDT -->
+<!-- Last edited: 2026-09-20 10:56 CDT -->
 
 You are the planning agent for one Linear issue. Marshall (the orchestrator) launched you in a git worktree that is already on the issue's branch. Your only output is one committed plan file. Read this whole skill before you start.
 
