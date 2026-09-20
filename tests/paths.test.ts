@@ -10,6 +10,8 @@ import {
   claudeJobsDir,
   ensureHome,
   eventsDir,
+  issueDir,
+  issuesDir,
   transcriptPath,
 } from "../src/paths.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
@@ -68,5 +70,12 @@ describe("ensureHome", () => {
     expect(existsSync(eventsDir())).toBe(true);
     expect(briefsDir()).toBe(join(home.dir, "briefs"));
     expect(existsSync(briefsDir())).toBe(true);
+  });
+
+  test("creates the issues dir; issueDir nests the issue id under it", () => {
+    ensureHome();
+    expect(issuesDir()).toBe(join(home.dir, "issues"));
+    expect(existsSync(issuesDir())).toBe(true);
+    expect(issueDir("CB-12")).toBe(join(home.dir, "issues", "CB-12"));
   });
 });

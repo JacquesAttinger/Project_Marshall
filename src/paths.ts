@@ -45,6 +45,16 @@ export function eventsDir(): string {
   return join(marshallHome(), "events");
 }
 
+/** Per-issue state the skills write and the orchestrator reads: `<MARSHALL_HOME>/issues/`. */
+export function issuesDir(): string {
+  return join(marshallHome(), "issues");
+}
+
+/** `<MARSHALL_HOME>/issues/<ISSUE-ID>/`. The implement skill gets this as `MARSHALL_ISSUE_DIR`. */
+export function issueDir(issueId: string): string {
+  return join(issuesDir(), issueId);
+}
+
 /** Root of Claude Code's own state: `CLAUDE_CONFIG_DIR`, else `~/.claude`. Read-only for Marshall. */
 export function claudeHome(): string {
   const override = process.env.CLAUDE_CONFIG_DIR;
@@ -75,7 +85,7 @@ export function transcriptPath(cwd: string, sessionId: string): string {
 /** Create the state directory tree. Safe to call repeatedly (`mkdir -p` semantics). */
 export function ensureHome(): string {
   const home = marshallHome();
-  for (const dir of [home, logDir(), handoffDir(), eventsDir(), briefsDir()]) {
+  for (const dir of [home, logDir(), handoffDir(), eventsDir(), briefsDir(), issuesDir()]) {
     mkdirSync(dir, { recursive: true });
   }
   return home;
