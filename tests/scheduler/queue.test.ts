@@ -1,10 +1,11 @@
 // Last edited: 2026-09-20 17:05 CDT
 
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { setPause } from "../../src/caps.ts";
 import { dispatch } from "../../src/cli/index.ts";
 import { collectQueue, formatQueue } from "../../src/cli/queue.ts";
 import { tick } from "../../src/scheduler/tick.ts";
+import { type TempHome, useTempConfig, useTempHome } from "../helpers.ts";
 import { pickable } from "./fake-client.ts";
 import { type Harness, makeHarness, NOW, seedClaim } from "./helpers.ts";
 
@@ -112,14 +113,23 @@ describe("formatQueue", () => {
 });
 
 describe("marshall queue", () => {
+  let home: TempHome;
+  let previousKey: string | undefined;
+
+  beforeEach(() => {
+    home = useTempHome();
+    useTempConfig(home);
+    previousKey = process.env.MARSHALL_LINEAR_API_KEY;
+    delete process.env.MARSHALL_LINEAR_API_KEY;
+  });
+
+  afterEach(() => {
+    if (previousKey !== undefined) process.env.MARSHALL_LINEAR_API_KEY = previousKey;
+    home.restore();
+  });
+
   test("takes no positionals and fails before any request without a key", async () => {
     expect(await dispatch(["queue", "extra"])).toBe(2);
-    const previous = process.env.MARSHALL_LINEAR_API_KEY;
-    delete process.env.MARSHALL_LINEAR_API_KEY;
-    try {
-      await expect(dispatch(["queue"])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY is not set/);
-    } finally {
-      if (previous !== undefined) process.env.MARSHALL_LINEAR_API_KEY = previous;
-    }
+    await expect(dispatch(["queue"])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY is not set/);
   });
 });
