@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-20 12:35 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
@@ -49,6 +49,26 @@ describe("claudeBin", () => {
 describe("runClaude", () => {
   test("returns stdout on success", async () => {
     expect(await runClaude(["agents", "--json", "--all"])).toContain("[]");
+  });
+
+  test("strips the Claude-session markers and git's repo-location variables", async () => {
+    const bin = join(env.home.dir, "print-env");
+    writeFileSync(bin, "#!/bin/sh\nenv\n");
+    chmodSync(bin, 0o755);
+    process.env.MARSHALL_CLAUDE_BIN = bin;
+    process.env.CLAUDECODE = "1";
+    process.env.GIT_DIR = "/tmp/hook-repo/.git";
+    process.env.GIT_INDEX_FILE = "/tmp/hook-index";
+    process.env.KEEP_ME = "yes";
+    try {
+      const out = await runClaude([]);
+      expect(out).toContain("KEEP_ME=yes");
+      for (const gone of ["CLAUDECODE=", "GIT_DIR=", "GIT_INDEX_FILE="]) {
+        expect(out).not.toContain(gone);
+      }
+    } finally {
+      for (const k of ["CLAUDECODE", "GIT_DIR", "GIT_INDEX_FILE", "KEEP_ME"]) delete process.env[k];
+    }
   });
 
   test("non-zero exit → RunnerError with stderr", async () => {

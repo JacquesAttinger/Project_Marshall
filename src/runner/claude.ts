@@ -1,14 +1,19 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-20 12:30 CDT
 // The one place that spawns the `claude` binary. Tests point MARSHALL_CLAUDE_BIN at a shim.
 
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { GIT_LOCATION_VARS } from "../git.ts";
 import { RunnerError } from "./types.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-/** Env vars that mark "inside a Claude session". Stripped so a nested launch is not refused. */
-const STRIP_ENV = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"];
+/**
+ * Stripped from the agent's environment: the "inside a Claude session" markers, so a nested
+ * launch is not refused, and git's repo-location variables, so an agent started from a git hook
+ * commits to its own worktree and not to the hook's repo.
+ */
+const STRIP_ENV = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", ...GIT_LOCATION_VARS];
 
 /**
  * The binary to run: MARSHALL_CLAUDE_BIN, else the first `claude` on PATH outside cmux's shim

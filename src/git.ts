@@ -6,10 +6,11 @@ export class GitError extends Error {
 }
 
 /**
- * Repo-location variables a git hook exports to its children. Left in place, every call here
- * would act on the hook's repo instead of `cwd` (the pre-commit run of the test suite proved it).
+ * Repo-location variables a git hook exports to its children. Left in place, every git call in a
+ * child process acts on the hook's repo instead of its own cwd. The pre-commit run of the test
+ * suite proved it: the fake planner's `git commit` landed on Marshall's own branch.
  */
-const STRIP_ENV = [
+export const GIT_LOCATION_VARS = [
   "GIT_DIR",
   "GIT_WORK_TREE",
   "GIT_INDEX_FILE",
@@ -21,7 +22,7 @@ const STRIP_ENV = [
 export function gitEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined && !STRIP_ENV.includes(k)) env[k] = v;
+    if (v !== undefined && !GIT_LOCATION_VARS.includes(k)) env[k] = v;
   }
   return env;
 }
