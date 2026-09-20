@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:05 CDT
+// Last edited: 2026-09-20 15:30 CDT
 // One GraphQL document plus its Zod response schema per Linear operation Marshall uses.
 // Field names follow Linear's public schema. Keep documents minimal: every field costs complexity.
 
@@ -155,12 +155,27 @@ export const UpdateIssue: Operation<{ issueUpdate: { success: boolean; issue: { 
     }),
   };
 
-export const CreateComment: Operation<{ commentCreate: { success: boolean } }> = {
+const CommentPayloadSchema = SuccessSchema.extend({ comment: z.object({ id: z.string() }) });
+
+export const CreateComment: Operation<{
+  commentCreate: { success: boolean; comment: { id: string } };
+}> = {
   name: "CreateComment",
   doc: `mutation CreateComment($input: CommentCreateInput!) {
-  commentCreate(input: $input) { success }
+  commentCreate(input: $input) { success comment { id } }
 }`,
-  schema: z.object({ commentCreate: SuccessSchema }),
+  schema: z.object({ commentCreate: CommentPayloadSchema }),
+};
+
+/** Edit a comment in place. The hand-off re-post uses it so a bounce never adds a second comment. */
+export const UpdateComment: Operation<{
+  commentUpdate: { success: boolean; comment: { id: string } };
+}> = {
+  name: "UpdateComment",
+  doc: `mutation UpdateComment($id: String!, $input: CommentUpdateInput!) {
+  commentUpdate(id: $id, input: $input) { success comment { id } }
+}`,
+  schema: z.object({ commentUpdate: CommentPayloadSchema }),
 };
 
 export const CreateIssue: Operation<{

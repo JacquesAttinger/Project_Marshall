@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-20 15:30 CDT
 // The one module that talks to Linear. Every read or write Marshall makes goes through LinearClient.
 // Claim lock = state In Progress + one `marshall/agent-<slot>` label. `delegate` waits for the
 // iteration 2 OAuth agent, because the API only accepts agent users there.
@@ -32,6 +32,7 @@ import {
   PickableIssues,
   type TeamMeta,
   TeamMetaOp,
+  UpdateComment,
   UpdateIssue,
   Viewer,
 } from "./queries.ts";
@@ -62,7 +63,10 @@ export interface LinearClient {
   /** Back to Todo with every agent label removed. Used by reconcile (07) and bounces (08). */
   release(issueId: string, opts?: { comment?: string }): Promise<void>;
   setState(issueId: string, stateName: string): Promise<void>;
-  comment(issueId: string, markdown: string): Promise<void>;
+  /** Post a comment with the Marshall footer. The id lets a later `updateComment` edit it. */
+  comment(issueId: string, markdown: string): Promise<{ id: string }>;
+  /** Replace a comment's body (footer appended again). Fails if the comment was deleted. */
+  updateComment(commentId: string, markdown: string): Promise<void>;
   createFollowUp(originIssueId: string, input: FollowUpInput): Promise<CreatedIssue>;
   getIssue(issueId: string): Promise<IssueDetail>;
 }
@@ -133,10 +137,19 @@ interface Ctx {
   agentLabelIds: string[];
 }
 
-async function comment(ctx: Ctx, issueId: string, markdown: string): Promise<void> {
-  await run(ctx.gql, CreateComment, {
+async function comment(ctx: Ctx, issueId: string, markdown: string): Promise<{ id: string }> {
+  const { commentCreate } = await run(ctx.gql, CreateComment, {
     input: { issueId, body: `${markdown}${MARSHALL_COMMENT_FOOTER}` },
   });
+  return { id: commentCreate.comment.id };
+}
+
+async function updateComment(ctx: Ctx, commentId: string, markdown: string): Promise<void> {
+  await run(ctx.gql, UpdateComment, {
+    id: commentId,
+    input: { body: `${markdown}${MARSHALL_COMMENT_FOOTER}` },
+  });
+  ctx.log.info("linear.comment_updated", { commentId });
 }
 
 async function claim(ctx: Ctx, issueId: string, agentId: AgentId): Promise<boolean> {
@@ -221,6 +234,7 @@ function buildClient(ctx: Ctx): LinearClient {
       ctx.log.info("linear.state_set", { issueId, state: stateName });
     },
     comment: (issueId, markdown) => comment(ctx, issueId, markdown),
+    updateComment: (commentId, markdown) => updateComment(ctx, commentId, markdown),
     createFollowUp: (originId, input) => createFollowUp(ctx, originId, input),
     getIssue: async (issueId) => toDetail((await run(ctx.gql, IssueById, { id: issueId })).issue),
   };

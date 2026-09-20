@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-20 15:30 CDT
 // A fake `fetch` that plays Linear. Routes by GraphQL operationName, records every call,
 // and sets the rate-limit headers on each response. Handlers return data, `graphqlErrors(...)`,
 // or `httpStatus(...)`.
@@ -133,7 +133,8 @@ function defaultHandlers(): Record<string, Handler> {
     PickableIssues: () => ({ issues: { nodes: [] } }),
     IssueById: () => ({ issue: rawDetail() }),
     UpdateIssue: (vars) => ({ issueUpdate: { success: true, issue: { id: vars.id } } }),
-    CreateComment: () => ({ commentCreate: { success: true } }),
+    CreateComment: () => ({ commentCreate: { success: true, comment: { id: "comment-1" } } }),
+    UpdateComment: (vars) => ({ commentUpdate: { success: true, comment: { id: vars.id } } }),
     CreateIssue: () => ({
       issueCreate: {
         success: true,
