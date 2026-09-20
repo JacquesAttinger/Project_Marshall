@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:36 CDT
+// Last edited: 2026-09-19 21:55 CDT
 // Shared test setup: an isolated MARSHALL_HOME per test so nothing touches ~/.marshall.
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -38,7 +38,10 @@ export function useTempHome(prefix = "marshall-test-"): TempHome {
  */
 export function useTempConfig(home: TempHome, overrides: Record<string, unknown> = {}): string {
   const path = join(home.dir, "marshall.config.json");
-  writeFileSync(path, JSON.stringify({ workspace: "test", repoPath: home.dir, ...overrides }));
+  writeFileSync(
+    path,
+    JSON.stringify({ workspace: "test", teamId: "team-test", repoPath: home.dir, ...overrides }),
+  );
   process.env.MARSHALL_CONFIG = path;
   return path;
 }

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 21:55 CDT
 // Typed loaders for marshall.config.json (committed) and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -18,8 +18,7 @@ const positiveInt = z.number().int().min(1);
 export const ConfigSchema = z
   .object({
     workspace: z.string().min(1),
-    // Empty until step 02 looks it up; step 02 tightens this to min(1).
-    teamId: z.string().default(""),
+    teamId: z.string().min(1),
     repoPath: z
       .string()
       .min(1)
@@ -44,11 +43,21 @@ export const ConfigSchema = z
 export type Config = Readonly<z.infer<typeof ConfigSchema>>;
 
 export const EnvSchema = z.object({
-  LINEAR_API_KEY: z.string().optional(),
+  // Not `LINEAR_API_KEY`: a shell that exports the Hemut key would win over `.env` under Bun.
+  MARSHALL_LINEAR_API_KEY: z.string().optional(),
   NTFY_TOPIC_PREFIX: z.string().optional(),
 });
 
 export type Env = Readonly<z.infer<typeof EnvSchema>>;
+
+/** The Linear key, or a ConfigError that says where to put it. */
+export function requireLinearApiKey(env: Env): string {
+  const key = env.MARSHALL_LINEAR_API_KEY;
+  if (!key) {
+    throw new ConfigError("MARSHALL_LINEAR_API_KEY is not set. Add it to .env (see .env.example).");
+  }
+  return key;
+}
 
 /** Resolve the config path: explicit arg > MARSHALL_CONFIG > <repo root>/marshall.config.json. */
 export function resolveConfigPath(explicit?: string): string {
