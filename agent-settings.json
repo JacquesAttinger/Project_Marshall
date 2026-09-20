@@ -1,0 +1,7 @@
+{
+  "skipDangerousModePermissionPrompt": true,
+  "preferredNotifChannel": "notifications_disabled",
+  "includeCoAuthoredBy": false,
+  "env": { "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5[1m]" },
+  "effortLevel": "high"
+}

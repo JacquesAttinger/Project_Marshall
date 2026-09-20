@@ -1,0 +1,23 @@
+{
+  "state": "done",
+  "detail": "redacted",
+  "tempo": "idle",
+  "output": null,
+  "children": null,
+  "linkScanOffset": 0,
+  "template": "bg",
+  "bgIsolation": "none",
+  "interactiveLineage": true,
+  "intent": "redacted",
+  "name": "done job without tokens",
+  "nameSource": "auto",
+  "sessionId": "00000000-0000-4000-8000-000000000003",
+  "resumeSessionId": "00000000-0000-4000-8000-000000000003",
+  "daemonShort": "job00003",
+  "cwd": "/tmp/marshall-fixture",
+  "createdAt": "2026-09-13T15:54:25.220Z",
+  "updatedAt": "2026-09-14T01:02:00.765Z",
+  "firstTerminalAt": "2026-09-14T01:02:00.765Z",
+  "backend": "daemon",
+  "lastTerminalAt": "2026-09-14T01:02:00.765Z"
+}
