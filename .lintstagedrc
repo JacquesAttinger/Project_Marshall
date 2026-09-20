@@ -1,0 +1,4 @@
+{
+  "*.{ts,json,md}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
+  "*.ts": "bun scripts/check-size.ts"
+}
