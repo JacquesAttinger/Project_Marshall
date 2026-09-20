@@ -1,6 +1,6 @@
 # Step 08 — Master Agent State Machine
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** The brain for one issue.
 It runs plan → implement → review → hand-off, watches the clock, restarts a stuck agent, and knows when to give up and call me.
@@ -17,7 +17,7 @@ One `MasterAgent` class per claim that drives the phases in order, enforces ever
 
 ## Spec references
 
-Sections 5.1, 5.2, 6.6, 7, 10.2 of `project_jarvis_plan.md`.
+Sections 5.1, 5.2, 6.6, 7, 10.2 of `project_marshall_plan.md`.
 
 ## In scope
 
@@ -28,16 +28,16 @@ Failure states: `Blocked`, `Stalled`, `Over Budget`, `Rate Limited`.
 
 ### Phases
 
-- **Planning:** `classify()` → pick model → `runner.launch` with `/jarvis-plan <issue>` in the worktree. Done when the `Stop` hook arrives and the plan file validates.
-- **Implementing + Reviewing:** `runner.launch` with `/jarvis-implement <plan> <issue> <slot>`. Done when the `Stop` hook arrives and a PR URL exists. `REVIEW_EXHAUSTED` → `Blocked`.
+- **Planning:** `classify()` → pick model → `runner.launch` with `/marshall-plan <issue>` in the worktree. Done when the `Stop` hook arrives and the plan file validates.
+- **Implementing + Reviewing:** `runner.launch` with `/marshall-implement <plan> <issue> <slot>`. Done when the `Stop` hook arrives and a PR URL exists. `REVIEW_EXHAUSTED` → `Blocked`.
 - **Hand-off:** run the hand-off writer, `handoff.post()`, move the issue to Needs Verification, file `followups.json` via `linear.createFollowUp`, emit `finished`.
-- **Bounce:** on pickup of an issue with an existing branch, skip Planning, read the latest human comment, and launch `/jarvis-implement` with the comment as the instruction. Rewrite the hand-off at the end.
+- **Bounce:** on pickup of an issue with an existing branch, skip Planning, read the latest human comment, and launch `/marshall-implement` with the comment as the instruction. Rewrite the hand-off at the end.
 
 ### Limits
 
 - Issue clock: 2 hours from claim across all phases. On expiry: kill, emit `over_budget`, mark Blocked.
 - Stall: `runner.isStalled(job, 5)` → `runner.resume`. Count resumes. After 2: discard the branch, restart the current phase fresh once. If that also fails: Blocked.
-- Fix cycles: enforced inside `jarvis-implement` (4). This step only reads the result.
+- Fix cycles: enforced inside `marshall-implement` (4). This step only reads the result.
 - Rate limit: `runner.rateLimited(event)` → set the scheduler pause flag, keep the claim, emit `rate_limited`. On the next 5-hour boundary (or a config delay), resume the job and clear the flag, emit `rate_limit_resumed`.
 - Crash of the orchestrator: state is in the `claims` row, so a restart plus step 07's reconcile can rebuild the object and continue.
 

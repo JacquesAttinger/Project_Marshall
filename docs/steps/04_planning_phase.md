@@ -1,8 +1,8 @@
 # Step 04 — Planning Phase
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
-**TLDR:** Two things: a cheap Haiku call that says "simple" or "complex," and a `jarvis-plan` skill that is `linear-plan` without the interview.
+**TLDR:** Two things: a cheap Haiku call that says "simple" or "complex," and a `marshall-plan` skill that is `linear-plan` without the interview.
 The skill reads the issue, explores the repo, writes a plan file, and posts a summary to Linear.
 
 ## Goal
@@ -16,7 +16,7 @@ Given an issue id and a worktree, produce `docs/<topic>_plan.md` with no human i
 
 ## Spec references
 
-Sections 6.1, 6.2, 7.1, 11 of `project_jarvis_plan.md`.
+Sections 6.1, 6.2, 7.1, 11 of `project_marshall_plan.md`.
 
 ## In scope
 
@@ -27,7 +27,7 @@ Sections 6.1, 6.2, 7.1, 11 of `project_jarvis_plan.md`.
 - Input: title, description, priority, labels, comment count. No repo access.
 - Mapping: `simple → opus`, `complex → fable`. The mapping lives in config.
 
-### Skill `skills/jarvis-plan/SKILL.md`
+### Skill `skills/marshall-plan/SKILL.md`
 
 - Fork of `~/.claude/skills/linear-plan/SKILL.md` with these changes:
   - Remove step 4 (`/grilling`). No questions to the human.
@@ -53,14 +53,14 @@ Sections 6.1, 6.2, 7.1, 11 of `project_jarvis_plan.md`.
 ## Deliverables
 
 - `src/classify.ts` + `tests/classify.test.ts` (golden issues: one obviously simple, one obviously complex).
-- `skills/jarvis-plan/SKILL.md` and a symlink or install note so Claude Code can find it.
+- `skills/marshall-plan/SKILL.md` and a symlink or install note so Claude Code can find it.
 - `docs/plan_template.md` — the section list the plan must contain.
 - A recorded run: one real ChessBuddy issue planned end to end, with the plan file checked in under `docs/examples/`.
 
 ## Acceptance criteria
 
 - `classify` returns valid JSON for 5 sample issues in under 10 seconds each.
-- `claude --bg --name test-plan --model opus "/jarvis-plan CB-1"` in a worktree produces the plan file with all required sections and posts one Linear comment.
+- `claude --bg --name test-plan --model opus "/marshall-plan CB-1"` in a worktree produces the plan file with all required sections and posts one Linear comment.
 - The plan file passes a section-heading check script.
 - No `AskUserQuestion` calls appear in the transcript.
 

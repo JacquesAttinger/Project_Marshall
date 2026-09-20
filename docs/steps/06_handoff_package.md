@@ -1,6 +1,6 @@
 # Step 06 — Hand-off Package
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** The note the robot leaves on my desk.
 It tells me where the feature is, what was wrong, what the robot did, and how to check it.
@@ -18,7 +18,7 @@ A fixed six-section document produced at the end of every issue, so I can decide
 
 ## Spec references
 
-Sections 7.1, 8.3 of `project_jarvis_plan.md`.
+Sections 7.1, 8.3 of `project_marshall_plan.md`.
 Format source: `~/.claude/skills/linear-plan/SKILL.md`, step 3 (the orientation walkthrough).
 
 ## In scope
@@ -34,7 +34,7 @@ Format source: `~/.claude/skills/linear-plan/SKILL.md`, step 3 (the orientation 
 
 ### Writer
 
-- A skill `skills/jarvis-handoff/SKILL.md`, or a final section of `jarvis-implement`. It reads the plan, the diff, and the PR, and writes `~/.jarvis/handoffs/<ISSUE-ID>.md`.
+- A skill `skills/marshall-handoff/SKILL.md`, or a final section of `marshall-implement`. It reads the plan, the diff, and the PR, and writes `~/.marshall/handoffs/<ISSUE-ID>.md`.
 - No screenshots or logs. Tests and review already ran.
 
 ### Poster `src/handoff.ts`
@@ -56,7 +56,7 @@ Format source: `~/.claude/skills/linear-plan/SKILL.md`, step 3 (the orientation 
 ## Deliverables
 
 - `docs/handoff_template.md`.
-- `skills/jarvis-handoff/SKILL.md` (or the section in `jarvis-implement`).
+- `skills/marshall-handoff/SKILL.md` (or the section in `marshall-implement`).
 - `src/handoff.ts` + `tests/handoff.test.ts` (validate on a good file, a file missing a section, a file with no PR URL).
 - One real hand-off checked in under `docs/examples/` from the step 05 run.
 
@@ -68,7 +68,7 @@ Format source: `~/.claude/skills/linear-plan/SKILL.md`, step 3 (the orientation 
 
 ## Open questions for grilling
 
-1. Separate `jarvis-handoff` skill, or the last step of `jarvis-implement`? Separate is cleaner for bounces (rewrite the hand-off after a fix without re-running implementation).
+1. Separate `marshall-handoff` skill, or the last step of `marshall-implement`? Separate is cleaner for bounces (rewrite the hand-off after a fix without re-running implementation).
 2. Replace the PR body or append a section? `Closes <URL>` must survive.
 3. Should section 5 list every file touched, or only the ones that matter, with a link to the diff?
 4. On a bounce (issue comes back with a comment), does the hand-off get a "Round 2: what changed" section on top, or a full rewrite?
