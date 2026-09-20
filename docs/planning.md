@@ -1,6 +1,6 @@
 # Planning phase — how it works
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 13:10 CDT -->
 
 **TLDR:** Marshall turns a claimed Linear issue into a committed plan file with no human in the loop.
 A cheap Haiku call says "simple" or "complex", which picks Opus or Fable.
@@ -35,7 +35,7 @@ const result = await runPlanPhase({ db, linear, config, issue, cwd, mode: "fresh
    Priority is an input to the classifier, never an override.
 2. **Brief.** `writeBrief()` renders the issue to `~/.marshall/briefs/<runId>.md`.
    The brief holds facts only; the instructions live in the skill.
-3. **Launch.** `launch()` from the runner with `--model <picked>`, `--plugin-dir <Marshall repo root>`, and the prompt `/marshall:plan <brief path>`.
+3. **Launch.** `launch()` from the runner with `--model <picked>`, `--plugin-dir <Marshall repo>/plugin`, and the prompt `/marshall:plan <brief path>`.
    The runner adds `--strict-mcp-config`, so the claude.ai Linear connector never reaches an agent.
 4. **Wait.** The waiter resolves on the run's terminal hook event.
    After `config.planMinutes` (20) with no `Stop`, the run is killed and the result is `timeout`.
@@ -94,8 +94,8 @@ Use a helper, not inline.
 
 ## The skill
 
-The repo root is a Claude Code plugin named `marshall` (`.claude-plugin/plugin.json`).
-The planner is `skills/plan/SKILL.md`, invoked as `/marshall:plan <brief path>`; its template is `skills/plan/template.md`.
+`plugin/` is a Claude Code plugin named `marshall` (`plugin/.claude-plugin/plugin.json`); it is not the repo root because a plugin root's `bin/` goes on the agent's `PATH`.
+The planner is `plugin/skills/plan/SKILL.md`, invoked as `/marshall:plan <brief path>`; its template is `plugin/skills/plan/template.md`.
 Later steps add `implement` and `resolve-conflicts` to the same plugin.
 
 Why a plugin: agents launch with `--setting-sources project,local`, and only the `user` source loads `~/.claude/skills/`.
@@ -151,6 +151,6 @@ The worktree must exist and be on the issue branch (step 07 creates it in the lo
 - A git hook exports `GIT_DIR` and `GIT_INDEX_FILE` to its children.
   The pre-commit run of the test suite made the fake planner's `git commit` land on Marshall's own branch.
   `runClaude` and `runGit` now strip git's repo-location variables, so an agent started from a hook commits to its own worktree.
-- `claude -p --plugin-dir <root> "/marshall:plan /missing"` answers `BRIEF_MISSING /missing` after about 5 s of API time, then the process lingers about two minutes before it exits (observed twice, with stdin closed).
+- `claude -p --plugin-dir <repo>/plugin "/marshall:plan /missing"` answers `BRIEF_MISSING /missing` after about 5 s of API time, then the process lingers about two minutes before it exits (observed twice, with stdin closed).
   The classifier, which loads no plugin, exits in 4–7 s.
   The planner itself runs under `--bg`, and the phase reads its end from the `Stop` hook, not from the process exit, so the lag does not reach the loop.

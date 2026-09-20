@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:35 CDT
+// Last edited: 2026-09-20 12:35 CDT
 // Hook events: ingest a run's events file into the `events` table, classify terminal events,
 // and watch the events folder so the runner learns about completion without polling the daemon.
 // On a terminal event the runner stops the (now idle) session so resume never creates a copy.
@@ -23,15 +23,22 @@ export function parseEventLine(line: string, runId: string): HookEvent | null {
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
-  const { received_at: receivedAt, event } = parsed as {
-    received_at?: unknown;
-    event?: unknown;
-  };
+  const {
+    received_at: receivedAt,
+    event,
+    stop_blocked: stopBlocked,
+  } = parsed as { received_at?: unknown; event?: unknown; stop_blocked?: unknown };
   if (typeof receivedAt !== "string" || !event || typeof event !== "object") return null;
   const payload = event as Record<string, unknown>;
   const name = payload.hook_event_name;
   if (typeof name !== "string") return null;
-  return { receivedAt, runId, name, payload };
+  return {
+    receivedAt,
+    runId,
+    name,
+    payload,
+    ...(stopBlocked === true ? { stopBlocked: true } : {}),
+  };
 }
 
 /**
@@ -68,9 +75,13 @@ export function ingestFile(db: Database, runId: string): HookEvent[] {
   return events;
 }
 
-/** `Stop` with nothing left in the background → finished. `StopFailure` → failed. Else null. */
+/**
+ * `Stop` with nothing left in the background → finished, unless the Stop guard blocked it (the
+ * agent was sent back to work). `StopFailure` → failed. Else null.
+ */
 export function classify(event: HookEvent): Terminal | null {
   if (event.name === "Stop") {
+    if (event.stopBlocked) return null;
     const tasks = event.payload.background_tasks;
     return Array.isArray(tasks) && tasks.length > 0 ? null : { kind: "finished" };
   }

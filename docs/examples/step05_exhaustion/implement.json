@@ -1,0 +1,30 @@
+{
+  "issueId": "CHE-0",
+  "slot": 1,
+  "phase": "done",
+  "cycle": 1,
+  "maxCycles": 1,
+  "branch": "scratch/marshall-exhaustion-test",
+  "prUrl": "https://github.com/dvairus/ChessBuddy/pull/37",
+  "prDraft": true,
+  "ciState": "green",
+  "outcome": "review_exhausted",
+  "reason": "1 cycles; still open: GET /health must return version 2.0.0 but api.__version__ is 0.1.0 and the bump is out of scope",
+  "followups": [
+    {
+      "title": "CHE-0 plan: api.__version__ is 0.1.0, not 2.0.0",
+      "body": "The plan says GET /health returns version 2.0.0 read from api.__version__, but services/api/src/api/__init__.py has __version__ = \"0.1.0\" and the plan puts the version bump out of scope (release PR). The endpoint reads __version__ and reports 0.1.0 until the release PR lands."
+    },
+    {
+      "title": "CHE-0 plan: requirements 2 and 3 contradict on the test literal",
+      "body": "Requirement 2 says no literal version string appears in the test; requirement 3 says the test asserts the literal \"2.0.0\". The implementation follows requirement 2 (asserts against api.__version__) so the test stays green across version bumps."
+    }
+  ],
+  "reviewNotes": [
+    "services/api/tests/test_health.py:15 - Low. Assertion against api.__version__ is tautological; the PR delivers \"0.1.0\" and the test hides that requirement 1 is unmet. The plan is self-contradictory (bump is out of scope).",
+    "README.md:43 - Low (docs). The table says /health returns {\"status\":\"ok\"}; the body now also includes version.",
+    "disputed: services/api/tests/test_health.py:15 - plan req 3 asks for the literal \"2.0.0\" in the test; it contradicts req 2 (no literal version string in the test) and would fail today because api.__version__ is 0.1.0.",
+    "disputed: services/api/src/api/main.py:12 - FastAPI(version=__version__) flagged as scope; kept because plan req 2 says no literal version string appears in main.py."
+  ],
+  "updatedAt": "2026-09-20T17:22:47Z"
+}

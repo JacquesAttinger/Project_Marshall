@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:05 CDT
+// Last edited: 2026-09-20 12:35 CDT
 // Builds the inline `--settings` JSON for one agent run: the committed agent-settings.json
 // plus a command hook per lifecycle event that appends to this run's events file.
 
@@ -48,9 +48,20 @@ export function loadBaseSettings(path: string = AGENT_SETTINGS_PATH): Json {
   return JSON.parse(readFileSync(path, "utf8")) as Json;
 }
 
-/** The hook command for a run. The sink script and the events file are both absolute paths. */
-export function hookCommand(runId: string): string {
-  return `${shellQuote(HOOK_SINK_PATH)} ${shellQuote(eventsFile(runId))}`;
+/**
+ * The hook command for a run. The sink script and the events file are both absolute paths.
+ * With `statusFile`, the sink also runs the Stop guard against it (Stop hook only).
+ */
+export function hookCommand(runId: string, statusFile?: string): string {
+  const base = `${shellQuote(HOOK_SINK_PATH)} ${shellQuote(eventsFile(runId))}`;
+  return statusFile ? `${base} ${shellQuote(statusFile)}` : base;
+}
+
+export interface SettingsExtras {
+  /** Merged over the base file's `env`; a per-run key wins. */
+  env?: Record<string, string>;
+  /** See `LaunchOpts.statusFile`. */
+  statusFile?: string;
 }
 
 /**
@@ -58,15 +69,20 @@ export function hookCommand(runId: string): string {
  * Hooks already present in the base file are kept; ours are appended so both fire.
  * Hooks are synchronous so their order in the events file matches the order they fired.
  */
-export function buildAgentSettings(runId: string, base: Json = loadBaseSettings()): string {
-  const command = hookCommand(runId);
+export function buildAgentSettings(
+  runId: string,
+  base: Json = loadBaseSettings(),
+  extras: SettingsExtras = {},
+): string {
   const existing = (base.hooks ?? {}) as Record<string, HookGroup[]>;
   const hooks: Record<string, HookGroup[]> = { ...existing };
   for (const name of HOOK_EVENTS) {
+    const command = hookCommand(runId, name === "Stop" ? extras.statusFile : undefined);
     const group: HookGroup = {
       hooks: [{ type: "command", command, timeout: HOOK_TIMEOUT_SECONDS[name] }],
     };
     hooks[name] = [...(existing[name] ?? []), group];
   }
-  return JSON.stringify({ ...base, hooks });
+  const baseEnv = (base.env ?? {}) as Record<string, string>;
+  return JSON.stringify({ ...base, hooks, env: { ...baseEnv, ...(extras.env ?? {}) } });
 }

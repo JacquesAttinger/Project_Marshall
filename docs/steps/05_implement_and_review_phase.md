@@ -1,8 +1,11 @@
 # Step 05 — Implement and Review Phase
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-20 10:30 CDT -->
 
-**TLDR:** A `marshall-implement` skill that runs `ship-plan` inside an existing worktree, keeps each agent's Docker services separate, then runs `code-review` and fixes what it finds, up to 4 times.
+**TLDR:** A `/marshall:implement` skill that runs `ship-plan` inside an existing worktree, keeps each agent's Docker services separate, then runs `/marshall:review` and fixes what it finds, up to 4 times.
+
+> **Decided 2026-09-20.** The open questions below are closed; the answers and the final layout are in [`../step_05_implement_review_plan.md`](../step_05_implement_review_plan.md).
+> Short form: the skills ship as a plugin at `plugin/` (`/marshall:implement`, `/marshall:review`), the skill reports through one JSON file at `$MARSHALL_HOME/issues/<ISSUE-ID>/implement.json` (no `followups.json`, no one-word status file), only `CONFIRMED` findings and spec gaps block, Compose isolation is env-only (`COMPOSE_PROJECT_NAME` plus per-port vars from `src/isolation.ts`), and a red run still ends with a draft PR.
 
 ## Goal
 
@@ -64,10 +67,12 @@ Sections 6.3, 6.4, 11, 12 of `project_marshall_plan.md`.
 - After 4 failed cycles the status file says `REVIEW_EXHAUSTED` and the skill stops.
 - `followups.json` is written when the plan's "Out of scope found" section is non-empty.
 
-## Open questions for grilling
+## Open questions for grilling (closed 2026-09-20)
 
 1. Modify `ship-plan` to accept "use the current worktree," or fork it into `marshall-implement` and let the two drift?
 2. Port offset of 100 per slot: does ChessBuddy expose any port that would collide at +100?
 3. Should the review pass block on `PLAUSIBLE` findings or only `CONFIRMED` ones?
 4. Should tests run inside Compose or against a host-side DB with a per-slot database name?
 5. Who commits the plan file: this skill, or step 04?
+
+Answers: (1) fork into the plugin skill, `ship-plan` is the source, the two may drift; (2) no, ChessBuddy publishes 5432, 9324, 8000 only; (3) `CONFIRMED` only, `PLAUSIBLE` goes to `reviewNotes`; (4) tests need no services today, Compose comes up only when the plan asks; (5) step 04 commits it as the first commit on the branch, this skill never edits it.

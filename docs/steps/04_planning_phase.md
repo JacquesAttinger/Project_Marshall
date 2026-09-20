@@ -1,6 +1,6 @@
 # Step 04 — Planning Phase
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 13:10 CDT -->
 
 **TLDR:** Two things: a cheap Haiku call that says "simple" or "complex," and a `/marshall:plan` skill that is `linear-plan` without the interview.
 The orchestrator writes a brief file from the Linear issue, the skill reads it, explores the repo, writes and commits a plan file, and the orchestrator checks the result with git and posts a summary to Linear.
@@ -30,7 +30,7 @@ Sections 5.3, 5.4, 6.1, 6.2, 7.1, 11, 12, 14 of `project_marshall_plan.md`.
 | 3 | Plan location | **Committed on the issue branch** as `docs/<topic>_plan.md`, one commit `Plan: <issue title>`. |
 | 4 | Write boundary | **bypassPermissions + post-check.** Plan mode cannot be used. The orchestrator verifies with git that nothing but the plan file changed. |
 | 5 | Bounce | **Revise mode.** The planner runs again with the existing plan and the latest human comment, appends `## Revision N`, commits `Plan: revision N`. Implementation resumes on the same branch. |
-| 6 | Skill packaging | The repo root is a Claude Code plugin `marshall`; the skill is `skills/plan/SKILL.md`, loaded per launch with `--plugin-dir`. User skills do not load in agent sessions (`--setting-sources project,local`). |
+| 6 | Skill packaging | `plugin/` is a Claude Code plugin `marshall` (step 05 moved it off the repo root so `bin/marshall` stays off agents' `PATH`); the skill is `plugin/skills/plan/SKILL.md`, loaded per launch with `--plugin-dir`. User skills do not load in agent sessions (`--setting-sources project,local`). |
 | 7 | Model routing | Complexity only. Priority is a classifier input, not an override. Config block `models: { classifier, planSimple, planComplex }`. |
 | 8 | Planner clock | `planMinutes: 20`, inside the 2-hour issue clock. No token cap (`--max-budget-usd` is print-only). |
 
@@ -43,7 +43,7 @@ Sections 5.3, 5.4, 6.1, 6.2, 7.1, 11, 12, 14 of `project_marshall_plan.md`.
 - Input: title, description, priority, labels, comment count. No repo access.
 - `modelFor()`: `simple → models.planSimple` (opus), `complex → models.planComplex` (fable).
 
-### Skill `skills/plan/SKILL.md`
+### Skill `plugin/skills/plan/SKILL.md`
 
 - The orientation walkthrough from `linear-plan`, no `/grilling`, no questions, no `EnterPlanMode`.
 - Sections, in order: TLDR, Where to find it, Orientation, What is wrong and why, Likely touched files, Plan, Decisions made alone, Out of scope found, Verification. Template: `skills/plan/template.md`.
@@ -72,7 +72,7 @@ Sections 5.3, 5.4, 6.1, 6.2, 7.1, 11, 12, 14 of `project_marshall_plan.md`.
 
 ## Deliverables
 
-- `.claude-plugin/plugin.json`, `skills/plan/SKILL.md`, `skills/plan/template.md`.
+- `plugin/.claude-plugin/plugin.json`, `plugin/skills/plan/SKILL.md`, `plugin/skills/plan/template.md`.
 - `src/plan/{index,types,classify,brief,template,verify,summary,wait,phase}.ts`, `src/git.ts`, `src/cli/plan.ts`.
 - `tests/plan/*.test.ts` (classifier through the fake shim, brief snapshot, heading check, git post-check in a temp repo, the whole phase), `tests/plan.live.test.ts`, fixtures under `tests/fixtures/{issues,plans}/`.
 - `docs/planning.md`.

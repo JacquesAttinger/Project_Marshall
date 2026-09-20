@@ -1,5 +1,0 @@
-{
-  "name": "marshall",
-  "version": "0.1.0",
-  "description": "Skills that Marshall's agents run inside an issue worktree. Loaded per launch with --plugin-dir."
-}

@@ -1,6 +1,6 @@
 # Agent runner — observed behaviour
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 12:50 CDT -->
 
 **TLDR:** This page records what the real `claude` daemon did when the runner drove it on 2026-09-19 (Claude Code 2.1.278).
 It shows the exact command line, what `claude agents --json` and `state.json` say in each lifecycle state, and the facts that changed the design during the live test.
@@ -26,6 +26,12 @@ The spawned process also loses `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, and git's
 
 `--settings` is `agent-settings.json` plus one command hook per event in `SessionStart`, `Stop`, `StopFailure`, `SubagentStop`, `Notification`, `SessionEnd`.
 Each hook runs `scripts/hook-sink.sh <MARSHALL_HOME>/events/<runId>.jsonl` and the sink appends `{"received_at": ..., "event": <payload>}` on one line.
+`LaunchOpts.env` is merged into the settings `env` block, so it applies to every Bash call the agent makes.
+
+With `LaunchOpts.statusFile`, the `Stop` hook gets that path as a second argument and the sink runs `scripts/stop-guard.ts` on it.
+A `Stop` with no background tasks while the file has `outcome: null` (or does not exist yet) is **blocked**: the hook prints `{"decision":"block","reason":...}`, Claude Code sends the agent back to work, and the events line carries `"stop_blocked": true` so `classify()` does not treat it as terminal.
+At most 3 blocks per status file (`<statusFile>.stop-blocks` counts them); after that the stop goes through and the orchestrator sees a run that ended with no outcome.
+This exists because a skill that calls another skill (`/marshall:implement` → `/marshall:review`) can end its turn on the inner skill's report; observed on 2026-09-20, run `che-5-1d34b0a8`.
 
 `claude --bg` returns in about 0.8 s and prints `Started background session <8 hex>`; the first 8-hex token is the job id.
 The job id is the first 8 characters of the session id.

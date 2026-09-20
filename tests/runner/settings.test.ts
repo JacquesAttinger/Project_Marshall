@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-20 12:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -85,6 +85,35 @@ describe("buildAgentSettings", () => {
   test("shellQuote handles single quotes and spaces", () => {
     expect(shellQuote("a b")).toBe("'a b'");
     expect(shellQuote("it's")).toBe(`'it'\\''s'`);
+  });
+});
+
+describe("buildAgentSettings extras", () => {
+  test("per-run env merges over the base env; a per-run key wins", () => {
+    const base = { env: { KEEP: "base", OVERRIDE: "base" } };
+    const settings = parse(
+      buildAgentSettings("run-1", base, { env: { OVERRIDE: "run", MARSHALL_SLOT: "1" } }),
+    );
+    expect(settings.env).toEqual({ KEEP: "base", OVERRIDE: "run", MARSHALL_SLOT: "1" });
+  });
+
+  test("no per-run env leaves the committed env untouched", () => {
+    const base = loadBaseSettings();
+    const settings = parse(buildAgentSettings("run-1"));
+    expect(settings.env).toEqual(base.env);
+    expect(buildAgentSettings("run-1")).toBe(buildAgentSettings("run-1", undefined, {}));
+  });
+
+  test("a status file goes to the Stop hook only", () => {
+    const settings = parse(
+      buildAgentSettings("run-1", undefined, { statusFile: "/x/issues/CB-1/implement.json" }),
+    );
+    const stop = settings.hooks.Stop?.[0]?.hooks[0]?.command;
+    expect(stop).toBe(hookCommand("run-1", "/x/issues/CB-1/implement.json"));
+    expect(stop).toContain("'/x/issues/CB-1/implement.json'");
+    for (const name of HOOK_EVENTS.filter((n) => n !== "Stop")) {
+      expect(settings.hooks[name]?.[0]?.hooks[0]?.command).toBe(hookCommand("run-1"));
+    }
   });
 });
 

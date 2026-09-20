@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 12:35 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -17,6 +17,18 @@ export interface LaunchOpts {
   maxBudgetUsd?: number;
   /** Escape hatch for later steps (`--plugin-dir`, `--add-dir`, ...). Appended before the prompt. */
   extraArgs?: string[];
+  /**
+   * Environment for every Bash call the agent makes, merged into the settings `env` key.
+   * Bash state does not persist between an agent's tool calls, so this is the only way to hand
+   * the agent a value (a slot's Compose project name, the issue dir) that must hold for the run.
+   */
+  env?: Record<string, string>;
+  /**
+   * A JSON status file the agent writes (`implement.json`). While its `outcome` is null, a `Stop`
+   * with no background tasks is blocked by the Stop hook (`scripts/stop-guard.ts`) and is not
+   * terminal for the runner: the skill has more to do. Capped at 3 blocks per file.
+   */
+  statusFile?: string;
 }
 
 export interface ResumeOpts extends Omit<LaunchOpts, "model"> {
@@ -65,6 +77,8 @@ export interface HookEvent {
   /** `hook_event_name` from the payload (`Stop`, `StopFailure`, ...). */
   name: string;
   payload: Record<string, unknown>;
+  /** The Stop guard blocked this stop, so the agent was sent back to work. */
+  stopBlocked?: boolean;
 }
 
 export type Terminal = { kind: "finished" } | { kind: "failed"; error: string };

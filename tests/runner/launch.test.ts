@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 12:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -66,6 +66,19 @@ describe("buildArgv", () => {
       "/p",
       "Print hello, then stop.",
     ]);
+  });
+
+  test("env and statusFile reach the settings JSON", () => {
+    const argv = buildArgv("r", {
+      ...BASE,
+      env: { COMPOSE_PROJECT_NAME: "marshall-1" },
+      statusFile: "/s/implement.json",
+    });
+    const settings = JSON.parse(argv[argv.indexOf("--settings") + 1] as string);
+    expect(settings.env.COMPOSE_PROJECT_NAME).toBe("marshall-1");
+    expect(settings.env.ANTHROPIC_DEFAULT_FABLE_MODEL).toContain("fable");
+    expect(settings.hooks.Stop[0].hooks[0].command).toContain("'/s/implement.json'");
+    expect(settings.hooks.SessionEnd[0].hooks[0].command).not.toContain("implement.json");
   });
 
   test("optional flags are omitted when unset", () => {

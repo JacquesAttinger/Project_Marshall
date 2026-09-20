@@ -14,6 +14,7 @@ export class ConfigError extends Error {
 }
 
 const positiveInt = z.number().int().min(1);
+const port = z.number().int().min(1).max(65535);
 const modelName = z.string().min(1);
 
 /** Which Claude model each phase runs. Values go straight to `--model`. */
@@ -50,6 +51,12 @@ export const ConfigSchema = z
     /** Planner wall clock, inside the issue clock. Step 08 kills the run on expiry. */
     planMinutes: positiveInt.default(20),
     models: ModelsSchema.default({ classifier: "haiku", planSimple: "opus", planComplex: "fable" }),
+    /**
+     * Host ports the target repo's Compose file reads from env, keyed by the env var name
+     * (`POSTGRES_HOST_PORT: 5432`). Slot N gets `base + N * portOffsetPerSlot`.
+     */
+    services: z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), port).default({}),
+    portOffsetPerSlot: positiveInt.default(100),
   })
   .strict();
 

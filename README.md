@@ -1,10 +1,10 @@
 # Project Marshall
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 13:05 CDT -->
 
 **TLDR:** Marshall watches a Linear board and runs Claude Code agents on the issues.
 Iteration 1 is a Linear autopilot for one repo (ChessBuddy) on a laptop.
-So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), and the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file).
+So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), and the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart).
 
 ## Setup
 
@@ -50,9 +50,18 @@ See [`docs/runner.md`](docs/runner.md) for the exact command line and what each 
 
 ## Plugin and skills
 
-The repo root is a Claude Code plugin named `marshall` (`.claude-plugin/plugin.json`).
-Agents launch with `--setting-sources project,local`, which never loads `~/.claude/skills/`, so every skill an agent needs lives under `skills/` here and is loaded per launch with `--plugin-dir <repo root>`.
-`skills/plan/` is the autonomous planner (`/marshall:plan <brief>`); see [`docs/planning.md`](docs/planning.md).
+`plugin/` is a Claude Code plugin named `marshall` (`plugin/.claude-plugin/plugin.json`).
+Agents launch with `--setting-sources project,local`, which never loads `~/.claude/skills/`, so every skill an agent needs lives under `plugin/skills/` here and is loaded per launch with `--plugin-dir <repo>/plugin`.
+It is not the repo root because a plugin root's `bin/` goes on the agent's `PATH`, and `bin/marshall` is not for agents.
+
+| Skill | Does |
+|---|---|
+| `/marshall:plan <brief>` | The autonomous planner; see [`docs/planning.md`](docs/planning.md). |
+| `/marshall:implement <plan-path> <ISSUE-ID>` | Plan → commits → local gate → PR → CI → `/marshall:review` → fixes, up to `maxFixCycles` times. Writes `~/.marshall/issues/<ISSUE-ID>/implement.json` at every step (`src/implement/status.ts` has the schema). Always ends with a PR; a red run leaves a draft whose body starts with `## Still failing`. |
+| `/marshall:review <plan-path>` | The built-in `/code-review` bug hunt plus a Spec pass against the plan. `CONFIRMED` findings and spec gaps block; `PLAUSIBLE` ones are notes. |
+
+`bun scripts/launch-implement.ts --cwd <worktree> --plan docs/x_plan.md --issue CB-12 --slot 0 --watch` starts one implement run by hand until the orchestrator (step 08) exists.
+Each slot gets its own Compose project name and host ports; see [`docs/isolation.md`](docs/isolation.md).
 
 ## Docs
 
@@ -61,3 +70,5 @@ Agents launch with `--setting-sources project,local`, which never loads `~/.clau
 - [`docs/linear_setup.md`](docs/linear_setup.md) — what is configured in Linear and why.
 - [`docs/runner.md`](docs/runner.md) — agent runner: command line, lifecycle states, live-test facts.
 - [`docs/planning.md`](docs/planning.md) — planning phase: the brief, the skill, the classifier, the post-run checks.
+- [`docs/isolation.md`](docs/isolation.md) — slot → Compose project → ports, and how the env reaches an agent.
+- [`plugin/README.md`](plugin/README.md) — the skills agents run, and how to try them by hand.
