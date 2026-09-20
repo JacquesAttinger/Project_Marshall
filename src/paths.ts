@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 15:25 CDT
 // Every path Marshall writes to derives from one root: MARSHALL_HOME or ~/.marshall.
 // Paths under the Claude daemon's home (CLAUDE_CONFIG_DIR or ~/.claude) are read-only for us.
 
@@ -31,8 +31,19 @@ export function logPath(): string {
   return join(logDir(), "marshall.log");
 }
 
+/** Hand-off packages the writer skill produces: `<ISSUE-ID>.md` plus a `<ISSUE-ID>.json` sidecar. */
 export function handoffDir(): string {
   return join(marshallHome(), "handoffs");
+}
+
+/** `<MARSHALL_HOME>/handoffs/<ISSUE-ID>.md`: the six-section package. */
+export function handoffPath(issueId: string): string {
+  return join(handoffDir(), `${issueId}.md`);
+}
+
+/** `<MARSHALL_HOME>/handoffs/<ISSUE-ID>.json`: what was posted where (comment id, round, PR). */
+export function handoffMetaPath(issueId: string): string {
+  return join(handoffDir(), `${issueId}.json`);
 }
 
 /** Issue briefs handed to planner agents: one `<runId>.md` per planning run. */
