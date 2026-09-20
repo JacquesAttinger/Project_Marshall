@@ -1,0 +1,21 @@
+{
+  "issueId": "CHE-5",
+  "slot": 0,
+  "phase": "done",
+  "cycle": 1,
+  "maxCycles": 4,
+  "branch": "jacques/che-5-health-endpoint-reports-the-api-version",
+  "prUrl": "https://github.com/dvairus/ChessBuddy/pull/36",
+  "prDraft": false,
+  "ciState": "green",
+  "outcome": "pr_green",
+  "reason": null,
+  "followups": [
+    {
+      "title": "Read the API version from package metadata",
+      "body": "services/api/pyproject.toml carries the same 0.1.0 string as api.__version__. Read the version from importlib.metadata.version(\"chessbuddy-api\") and drop the constant, so a release bump touches one file."
+    }
+  ],
+  "reviewNotes": [],
+  "updatedAt": "2026-09-20T17:15:06Z"
+}
