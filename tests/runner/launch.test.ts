@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 10:35 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -55,6 +55,7 @@ describe("buildArgv", () => {
       "bypassPermissions",
       "--setting-sources",
       "project,local",
+      "--strict-mcp-config",
       "--settings",
       buildAgentSettings("cb-12-00000000"),
       "--append-system-prompt",

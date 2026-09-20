@@ -12,5 +12,11 @@
   "issueTimeoutHours": 2,
   "maxFixCycles": 4,
   "maxBounces": 3,
-  "maxResumes": 2
+  "maxResumes": 2,
+  "planMinutes": 20,
+  "models": {
+    "classifier": "haiku",
+    "planSimple": "opus",
+    "planComplex": "fable"
+  }
 }

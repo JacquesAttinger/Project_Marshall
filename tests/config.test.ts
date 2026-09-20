@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:55 CDT
+// Last edited: 2026-09-20 10:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -46,7 +46,28 @@ describe("parseConfig", () => {
     expect(config.maxFixCycles).toBe(4);
     expect(config.maxBounces).toBe(3);
     expect(config.maxResumes).toBe(2);
+    expect(config.planMinutes).toBe(20);
+    expect(config.models).toEqual({
+      classifier: "haiku",
+      planSimple: "opus",
+      planComplex: "fable",
+    });
     expect(Object.isFrozen(config)).toBe(true);
+  });
+
+  test("models block fills missing keys and rejects unknown or empty ones", () => {
+    const partial = parseConfig({ ...minimal(), models: { planComplex: "opus" } });
+    expect(partial.models).toEqual({
+      classifier: "haiku",
+      planSimple: "opus",
+      planComplex: "opus",
+    });
+    expect(() => parseConfig({ ...minimal(), models: { planner: "opus" } })).toThrow(
+      /models: Unrecognized key: "planner"/,
+    );
+    expect(() => parseConfig({ ...minimal(), models: { classifier: "" } })).toThrow(
+      /models\.classifier/,
+    );
   });
 
   test("maxAgents above 3 fails and names the key", () => {
