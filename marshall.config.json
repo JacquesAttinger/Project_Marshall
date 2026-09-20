@@ -1,0 +1,16 @@
+{
+  "workspace": "chessbuddy",
+  "teamId": "",
+  "repoPath": "~/code/ChessBuddy",
+  "baseBranch": "main",
+  "maxAgents": 2,
+  "dailyStartCap": 6,
+  "windowStartCap": 2,
+  "windowHours": 5,
+  "pollSeconds": 45,
+  "stallMinutes": 5,
+  "issueTimeoutHours": 2,
+  "maxFixCycles": 4,
+  "maxBounces": 3,
+  "maxResumes": 2
+}

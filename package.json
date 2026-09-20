@@ -1,0 +1,29 @@
+{
+  "name": "project-marshall",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Marshall — a Linear autopilot that runs Claude Code agents on your issues.",
+  "bin": {
+    "marshall": "bin/marshall"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check:size": "bun scripts/check-size.ts",
+    "migrate": "bun bin/marshall db migrate",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@types/bun": "^1.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
+    "typescript": "^5"
+  }
+}
