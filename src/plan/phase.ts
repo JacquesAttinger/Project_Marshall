@@ -2,14 +2,14 @@
 // runPlanPhase: classify → brief → launch the planner → wait → verify with git → check headings →
 // post the summary to Linear. Each step is small; the phase reads top to bottom.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createLogger } from "../log.ts";
 import { kill, launch, mintRunId, type Run } from "../runner/index.ts";
 import { writeBrief } from "./brief.ts";
 import { classifyIssue, modelFor } from "./classify.ts";
 import { renderSummary } from "./summary.ts";
-import { checkPlanFile } from "./template.ts";
+import { checkPlanFile, revisionNumbers } from "./template.ts";
 import type { Classification, PlanFailure, PlanPhaseInput, PlanPhaseResult } from "./types.ts";
 import { planFilesOnBranch, verifyPlanCommit } from "./verify.ts";
 import { createRunWaiter } from "./wait.ts";
@@ -39,12 +39,24 @@ async function pickModel(
   }
 }
 
-/** Revise mode needs the existing plan's path for the brief. Given, or found on the branch. */
-async function existingPlanPath(ctx: Ctx): Promise<string | undefined> {
-  if (ctx.mode === "fresh") return undefined;
-  if (ctx.planPath) return ctx.planPath;
-  const found = await planFilesOnBranch(ctx.cwd, ctx.base).catch(() => []);
-  return found.length === 1 ? found[0] : undefined;
+/**
+ * Revise mode: the existing plan (given, or the one plan file on the branch) and the revision
+ * number (given, or one more than the newest `## Revision N` already in the file).
+ */
+async function reviseInfo(ctx: Ctx): Promise<{ planPath?: string; revision?: number }> {
+  if (ctx.mode === "fresh") return {};
+  let planPath = ctx.planPath;
+  if (!planPath) {
+    const found = await planFilesOnBranch(ctx.cwd, ctx.base).catch(() => []);
+    planPath = found.length === 1 ? found[0] : undefined;
+  }
+  let revision = ctx.revision;
+  if (revision === undefined) {
+    const full = planPath ? join(ctx.cwd, planPath) : null;
+    const seen = full && existsSync(full) ? revisionNumbers(readFileSync(full, "utf8")) : [];
+    revision = Math.max(0, ...seen) + 1;
+  }
+  return { planPath, revision };
 }
 
 async function launchPlanner(ctx: Ctx, model: string, briefPath: string): Promise<Run | Error> {
@@ -114,12 +126,14 @@ export async function runPlanPhase(input: PlanPhaseInput): Promise<PlanPhaseResu
   };
   const picked = await pickModel(ctx);
   if ("ok" in picked) return picked;
+  const revise = await reviseInfo(ctx);
+  ctx.revision = revise.revision;
   const briefPath = writeBrief({
     runId: ctx.runId,
     issue: ctx.issue,
     mode: ctx.mode,
-    revision: ctx.revision,
-    planPath: await existingPlanPath(ctx),
+    revision: revise.revision,
+    planPath: revise.planPath,
   });
   const ownWaiter = input.waiter ? null : createRunWaiter(input.db);
   const waiter = input.waiter ?? (ownWaiter as NonNullable<typeof ownWaiter>);

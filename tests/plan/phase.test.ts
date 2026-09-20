@@ -230,10 +230,23 @@ describe("runPlanPhase, revise", () => {
     expect(git(["rev-list", "--count", `${repo.base}..HEAD`], repo.dir)).toBe("3");
   });
 
+  test("the revision number defaults to one past the newest in the file", async () => {
+    const withOne = `${readFileSync(join(PLANS, "good_plan.md"), "utf8")}\n## Revision 1\n\nx\n`;
+    commitFile(repo, PLAN, withOne, "Plan: x");
+    planScript(
+      `printf '\\n## Revision 2\\n\\ny\\n' >> ${PLAN}\ngit commit -q -am "Plan: revision 2"`,
+    );
+    const result = await runPlanPhase(input({ mode: "revise", model: "opus" }));
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(readFileSync(result.briefPath, "utf8")).toContain("- Number: 2");
+    expect(comments[0]?.body).toContain("**Plan revision 2 for CB-12**");
+  });
+
   test("a revision commit without the Revision section → missing_sections", async () => {
     commitFile(repo, PLAN, readFileSync(join(PLANS, "good_plan.md"), "utf8"), "Plan: x");
     planScript(`echo "\n" >> ${PLAN}\ngit commit -q -am "Plan: revision 1"`);
-    const result = await runPlanPhase(input({ mode: "revise", revision: 1, model: "opus" }));
+    const result = await runPlanPhase(input({ mode: "revise", model: "opus" }));
     expect(result).toMatchObject({ ok: false, reason: "missing_sections" });
     expect(result.ok ? "" : result.detail).toContain('missing "Revision 1"');
   });
