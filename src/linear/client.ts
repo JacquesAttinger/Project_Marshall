@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:20 CDT
+// Last edited: 2026-09-20 15:15 CDT
 // The one module that talks to Linear. Every read or write Marshall makes goes through LinearClient.
 // Claim lock = state In Progress + one `marshall/agent-<slot>` label. `delegate` waits for the
 // iteration 2 OAuth agent, because the API only accepts agent users there.
@@ -12,6 +12,7 @@ import {
   type AgentId,
   agentLabelName,
   agentLabelsOf,
+  BLOCKED_STATE,
   IN_PROGRESS_STATE,
   type IssueDetail,
   isAgentId,
@@ -107,7 +108,7 @@ export function indexTeam(team: TeamMeta): TeamIndex {
 
 function requireSetup(index: TeamIndex): void {
   const missing: string[] = [];
-  for (const name of [TODO_STATE, IN_PROGRESS_STATE, NEEDS_VERIFICATION_STATE]) {
+  for (const name of [TODO_STATE, IN_PROGRESS_STATE, NEEDS_VERIFICATION_STATE, BLOCKED_STATE]) {
     if (!index.stateIds.has(name)) missing.push(`state "${name}"`);
   }
   for (const name of [AGENT_FILED_LABEL, ...AGENT_IDS.map(agentLabelName)]) {

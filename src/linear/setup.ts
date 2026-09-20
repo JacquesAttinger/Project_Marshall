@@ -1,6 +1,7 @@
-// Last edited: 2026-09-19 22:25 CDT
-// Idempotent workspace setup: the Needs Verification state, the agent-filed label, and the
-// marshall label group with one child per agent slot. Reads team metadata once, creates only what is missing.
+// Last edited: 2026-09-20 15:15 CDT
+// Idempotent workspace setup: the Needs Verification and Blocked states, the agent-filed label, and
+// the marshall label group with one child per agent slot. Reads team metadata once, creates only
+// what is missing.
 
 import type { Logger } from "../log.ts";
 import { run } from "./client.ts";
@@ -8,6 +9,7 @@ import type { Gql } from "./gql.ts";
 import {
   AGENT_FILED_LABEL,
   AGENT_IDS,
+  BLOCKED_STATE,
   IN_PROGRESS_STATE,
   MARSHALL_LABEL_GROUP,
   NEEDS_VERIFICATION_STATE,
@@ -15,6 +17,7 @@ import {
 import { CreateLabel, CreateState, type TeamMeta, TeamMetaOp } from "./queries.ts";
 
 export const NEEDS_VERIFICATION_COLOR = "#f2c94c";
+export const BLOCKED_COLOR = "#eb5757";
 
 export interface Ensured {
   id: string;
@@ -24,6 +27,7 @@ export interface Ensured {
 
 export interface SetupResult {
   needsVerification: Ensured;
+  blocked: Ensured;
   agentFiled: Ensured;
   marshallGroup: Ensured;
   agents: Ensured[];
@@ -32,35 +36,48 @@ export interface SetupResult {
 type State = TeamMeta["states"]["nodes"][number];
 type Label = TeamMeta["labels"]["nodes"][number];
 
-/** Midway between In Progress and the next state, or In Progress + 1 when it is last. */
-export function positionAfterInProgress(states: State[]): number {
+/** Midway between `after` and the next state, or `after` + 1 when it is last (or missing: last + 1). */
+export function positionAfter(states: State[], after: string): number {
   const sorted = [...states].sort((a, b) => a.position - b.position);
-  const idx = sorted.findIndex((s) => s.name === IN_PROGRESS_STATE);
+  const idx = sorted.findIndex((s) => s.name === after);
   if (idx < 0) return (sorted.at(-1)?.position ?? 0) + 1;
   const current = sorted[idx] as State;
   const next = sorted[idx + 1];
   return next ? (current.position + next.position) / 2 : current.position + 1;
 }
 
-async function ensureState(gql: Gql, teamId: string, states: State[], log: Logger) {
-  const existing = states.find((s) => s.name === NEEDS_VERIFICATION_STATE);
+export function positionAfterInProgress(states: State[]): number {
+  return positionAfter(states, IN_PROGRESS_STATE);
+}
+
+interface StateSpec {
+  name: string;
+  color: string;
+  /** The state this one sits right after. */
+  after: string;
+}
+
+/**
+ * Ensure one `started` state. When it is created, it is appended to `states` so a later spec can
+ * position itself after it in the same run.
+ */
+async function ensureState(
+  gql: Gql,
+  teamId: string,
+  states: State[],
+  spec: StateSpec,
+  log: Logger,
+): Promise<Ensured> {
+  const existing = states.find((s) => s.name === spec.name);
   if (existing) return { id: existing.id, name: existing.name, created: false };
-  const position = positionAfterInProgress(states);
+  const position = positionAfter(states, spec.after);
   const { workflowStateCreate } = await run(gql, CreateState, {
-    input: {
-      teamId,
-      name: NEEDS_VERIFICATION_STATE,
-      type: "started",
-      color: NEEDS_VERIFICATION_COLOR,
-      position,
-    },
+    input: { teamId, name: spec.name, type: "started", color: spec.color, position },
   });
-  log.info("linear.setup.state_created", { name: NEEDS_VERIFICATION_STATE, position });
-  return {
-    id: workflowStateCreate.workflowState.id,
-    name: NEEDS_VERIFICATION_STATE,
-    created: true,
-  };
+  log.info("linear.setup.state_created", { name: spec.name, position });
+  const id = workflowStateCreate.workflowState.id;
+  states.push({ id, name: spec.name, type: "started", position });
+  return { id, name: spec.name, created: true };
 }
 
 interface LabelSpec {
@@ -95,9 +112,22 @@ export async function ensureWorkspaceSetup(
   log: Logger,
 ): Promise<SetupResult> {
   const { team } = await run(gql, TeamMetaOp, { id: teamId });
-  const states = team.states.nodes;
+  const states = [...team.states.nodes];
   const labels = team.labels.nodes;
-  const needsVerification = await ensureState(gql, teamId, states, log);
+  const needsVerification = await ensureState(
+    gql,
+    teamId,
+    states,
+    { name: NEEDS_VERIFICATION_STATE, color: NEEDS_VERIFICATION_COLOR, after: IN_PROGRESS_STATE },
+    log,
+  );
+  const blocked = await ensureState(
+    gql,
+    teamId,
+    states,
+    { name: BLOCKED_STATE, color: BLOCKED_COLOR, after: NEEDS_VERIFICATION_STATE },
+    log,
+  );
   const agentFiled = await ensureLabel(gql, teamId, labels, { name: AGENT_FILED_LABEL }, log);
   const marshallGroup = await ensureLabel(
     gql,
@@ -118,5 +148,5 @@ export async function ensureWorkspaceSetup(
       ),
     );
   }
-  return { needsVerification, agentFiled, marshallGroup, agents };
+  return { needsVerification, blocked, agentFiled, marshallGroup, agents };
 }

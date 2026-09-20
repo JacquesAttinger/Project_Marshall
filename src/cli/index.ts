@@ -1,9 +1,10 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 17:00 CDT
 // Hand-rolled dispatch. No CLI dependency. `bin/marshall` imports this file.
 
 import { runMigrate } from "./db.ts";
 import { runLinearSetup } from "./linear.ts";
 import { runPlan, runPlanCheck } from "./plan.ts";
+import { runQueue } from "./queue.ts";
 import { runStatus } from "./status.ts";
 
 const USAGE = `Usage: marshall <command> [options]
@@ -12,11 +13,13 @@ Commands:
   status [--json]     Print config, state dir, schema version, and row counts
   db migrate          Create the state dir and apply pending migrations
   linear setup [--json]
-                      Create the Needs Verification state and the marshall labels (idempotent)
+                      Create the Needs Verification and Blocked states and the marshall labels
   plan <identifier> --cwd <worktree> [--revise] [--json]
                       Run the planning phase on one issue in an existing worktree
   plan check <file> [--json]
                       Check a plan file for the required sections
+  queue [--json]      Dry-run one scheduler tick: the ordered pickable list and why each
+                      issue would or would not start now. Never writes.
 
 Options:
   --config <path>     Config file (default: MARSHALL_CONFIG or ./marshall.config.json)
@@ -82,6 +85,10 @@ const COMMANDS: Record<string, Command> = {
       void (await runLinearSetup({ json: args.json, configPath: args.configPath })),
   },
   "plan check": { arity: 1, run: (args, [file]) => runPlanCheck(file as string, args.json) },
+  queue: {
+    arity: 0,
+    run: async (args) => void (await runQueue({ json: args.json, configPath: args.configPath })),
+  },
   plan: {
     arity: 1,
     run: (args, [identifier]) =>

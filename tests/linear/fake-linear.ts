@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:40 CDT
+// Last edited: 2026-09-20 15:15 CDT
 // A fake `fetch` that plays Linear. Routes by GraphQL operationName, records every call,
 // and sets the rate-limit headers on each response. Handlers return data, `graphqlErrors(...)`,
 // or `httpStatus(...)`.
@@ -30,6 +30,7 @@ export const IDS = {
   todo: "state-todo",
   inProgress: "state-in-progress",
   needsVerification: "state-needs-verification",
+  blocked: "state-blocked",
   done: "state-done",
   agentFiled: "label-agent-filed",
   marshall: "label-marshall",
@@ -61,6 +62,7 @@ export const fullTeamData = (): { team: TeamMeta } => ({
         { id: IDS.todo, name: "Todo", type: "unstarted", position: 1 },
         { id: IDS.inProgress, name: "In Progress", type: "started", position: 2 },
         { id: IDS.needsVerification, name: "Needs Verification", type: "started", position: 2.5 },
+        { id: IDS.blocked, name: "Blocked", type: "started", position: 2.75 },
         { id: IDS.done, name: "Done", type: "completed", position: 3 },
       ],
     },
