@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { priorityWord, renderBrief, writeBrief } from "../../src/plan/brief.ts";
+import { demoteHeadings, priorityWord, renderBrief, writeBrief } from "../../src/plan/brief.ts";
 import { type TempHome, useTempHome } from "../helpers.ts";
 import { sampleIssue } from "./helpers.ts";
 
@@ -117,6 +117,22 @@ describe("renderBrief, revise", () => {
         ].join("\n"),
       ),
     ).toBe(true);
+  });
+
+  test("headings inside the description and comments are demoted two levels", () => {
+    expect(demoteHeadings("# T\n## Expected\n### Sub\n##### Deep\n#hashtag\ntext")).toBe(
+      "### T\n#### Expected\n##### Sub\n###### Deep\n#hashtag\ntext",
+    );
+    const issue = sampleIssue({
+      description: "Intro\n\n## Expected\n\n* thing",
+      comments: [
+        { id: "c", body: "## Note\n\nx", createdAt: "2026-09-19T01:00:00Z", fromMarshall: false },
+      ],
+    });
+    const text = renderBrief({ runId: "r", issue, mode: "fresh", writtenAt: AT });
+    expect(text).toContain("## Description\n\nIntro\n\n#### Expected\n\n* thing\n");
+    expect(text).toContain("### You — 2026-09-19T01:00:00Z\n\n#### Note\n\nx");
+    expect(text.match(/^## .*$/gm)).toEqual(["## Issue", "## Description", "## Comments"]);
   });
 
   test("priority words", () => {

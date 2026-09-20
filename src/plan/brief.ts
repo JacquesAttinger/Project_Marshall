@@ -33,9 +33,19 @@ export interface BriefInput {
   writtenAt?: string;
 }
 
+/**
+ * Issue bodies carry their own headings (`## Expected`, `## Notes`). Pushed two levels down so
+ * they read as part of the section they sit in, never as sections of the brief.
+ */
+export function demoteHeadings(markdown: string): string {
+  return markdown.replace(/^(#{1,6})(\s)/gm, (_m, hashes: string, space: string) => {
+    return `${"#".repeat(Math.min(hashes.length + 2, 6))}${space}`;
+  });
+}
+
 function renderComment(c: IssueComment): string {
   const who = c.fromMarshall ? "Marshall" : "You";
-  return `### ${who} — ${c.createdAt}\n\n${c.body.trim()}`;
+  return `### ${who} — ${c.createdAt}\n\n${demoteHeadings(c.body.trim())}`;
 }
 
 function renderRevision(input: BriefInput): string[] {
@@ -49,7 +59,9 @@ function renderRevision(input: BriefInput): string[] {
     "",
     "### Latest comment from you",
     "",
-    latest ? `${latest.createdAt}\n\n${latest.body.trim()}` : "(no human comment on the issue)",
+    latest
+      ? `${latest.createdAt}\n\n${demoteHeadings(latest.body.trim())}`
+      : "(no human comment on the issue)",
     "",
   ];
 }
@@ -73,7 +85,7 @@ export function renderBrief(input: BriefInput): string {
     "",
     "## Description",
     "",
-    issue.description?.trim() || "(no description)",
+    demoteHeadings(issue.description?.trim() || "(no description)"),
     "",
     "## Comments",
     "",
