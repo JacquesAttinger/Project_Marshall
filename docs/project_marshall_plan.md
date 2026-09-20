@@ -1,6 +1,6 @@
-# Project Marshall — Planning Spec (v2)
+# Project Marshall — Planning Spec (v3)
 
-<!-- Last edited: 2026-09-19 23:30 CDT -->
+<!-- Last edited: 2026-09-20 10:50 CDT -->
 
 ## TLDR
 
@@ -10,8 +10,11 @@ I do not sit at the keyboard.
 I watch a dashboard, get a push notification when a robot is done or stuck, and then decide if I need to test it by hand.
 Iteration 1 runs on my laptop, watches the ChessBuddy Linear workspace, and runs at most 2 agents at a time.
 Later, I talk to Marshall from my phone and it turns my words into issues and agents.
-This is v2 of the spec.
+This is v3 of the spec.
 All 25 open questions from v1 are answered in section 15.
+v3 adds the Innovate agent (section 16, build step 11).
+It reads the repo, proposes new features, and asks me.
+When I say yes, it writes a Linear issue from its idea plus my notes, and the normal loop builds it.
 
 ---
 
@@ -22,6 +25,8 @@ Today I find a Linear issue, run `/linear-plan`, answer questions, and ship.
 Tomorrow, a master agent finds the issue, plans it, builds it, opens a PR, and tells me what it did and how to check it.
 The end state is a Marshall-style assistant.
 I give it an open-ended goal by voice, and it splits the goal into Linear issues and runs the same loop.
+Marshall should also propose work, not only execute it.
+The Innovate agent (section 16) is the first piece of that.
 
 ## 2. Scope
 
@@ -34,6 +39,9 @@ I give it an open-ended goal by voice, and it splits the goal into Linear issues
 - A dashboard shows every master agent, its phase, the queue, and a hand-off card for anything that needs me.
 - I get a push notification when an agent finishes, is blocked, or the queue pauses for rate limits.
 - Agents file out-of-scope work as new Linear issues.
+- **After the dry run proves the loop:** an Innovate agent scans the repo on a schedule, proposes new features, and pushes them to me.
+  I like or pass each one, with a note.
+  A liked proposal becomes a Linear issue that merges the agent's draft with my note, and the loop picks it up (section 16, step 11).
 
 ### 2.2 North star — Marshall
 
@@ -49,6 +57,7 @@ I give it an open-ended goal by voice, and it splits the goal into Linear issues
 - The Hemut workspace. Hemut comes only after ChessBuddy proves the loop.
 - Dedicated hardware or cloud hosting.
 - Agents that ask me design questions mid-plan.
+- A Testing agent that finds bugs and proposes fixes. It reuses the Innovate agent's proposal loop later (section 16.8).
 
 ## 3. Operating principles
 
@@ -75,6 +84,7 @@ I give it an open-ended goal by voice, and it splits the goal into Linear issues
 | **Dashboard** | Panels, queue, hand-off cards, kill button | Small local web app, reached over Tailscale; `claude agents` TUI until it exists |
 | **Notifier** | Push to iPhone and Mac | ntfy.sh, one topic per master agent + one for the orchestrator |
 | **Voice intake** | Speech → Linear issue | Deferred (iteration 3) |
+| **Innovate agent** | Reads the repo, proposes features, writes an issue draft per idea. Files an issue only after I say yes. | Fork of `/innovate` as `marshall-innovate`, run through the same runner; `proposals` table; step 11 (section 16) |
 
 ## 5. Issue lifecycle
 
@@ -175,6 +185,7 @@ The done gate is the single most important part of this spec.
 | Rate Limited | One push on pause, one on resume | Nothing |
 | Crashed | Push | Restart the daemon |
 | Queue empty | Dashboard badge only | Add issues |
+| Proposals ready | One push per Innovate run with the titles; `marshall proposals` for the detail | Like with a note, pass with a reason, or ignore (expires after 14 days). See section 16. |
 
 Agents never ask me design questions mid-plan.
 
@@ -216,19 +227,21 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 
 - Every issue in Needs Verification or Blocked.
 - Each card shows the full hand-off package or the block reason.
+- Iteration 2: every open proposal, with Like and Pass buttons and a note box (section 16.5).
 
 ### 8.4 Access and data
 
 - Small web app on the laptop, reached from Mac and phone over Tailscale.
 - Read-only except Kill. Approve, reject, and reorder happen in GitHub and Linear.
+- Iteration 2 adds one more write: replying to a proposal (Like / Pass + note).
 - Data sources: the orchestrator SQLite DB, `~/.claude/jobs/*/state.json` from `claude --bg`, and the hand-off files.
 - Until the web app exists, `claude agents` in a terminal is the stand-in.
 
 ## 9. Notifications
 
 - Channel: ntfy.sh. One topic per master agent, one for the orchestrator.
-- Push: finished (Needs Verification), blocked, over budget, crashed, rate-limit pause, rate-limit resume.
-- Badge only: queue empty, phase changes.
+- Push: finished (Needs Verification), blocked, over budget, crashed, rate-limit pause, rate-limit resume, proposals ready (one per Innovate run).
+- Badge only: queue empty, phase changes, proposal filed.
 
 ## 10. Infrastructure
 
@@ -268,8 +281,9 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 | `claude --bg` + supervisor daemon | built in | Background sessions with readable job state |
 | launchd templates | `~/Library/LaunchAgents/com.jacques.*` | Always-on scheduler on the laptop |
 | HTTP hooks | Claude Code hooks | Agent → orchestrator signaling |
+| `innovate` | `~/.claude/skills/innovate/` | Fork into `marshall-innovate`: tiers 1–3 only, an issue draft per idea, graveyard read from the `proposals` table |
 
-Gaps Marshall must build: the poller and claims table, the cadence and overlap checks, the Haiku classifier, the autonomous planner, the hand-off writer, the dashboard, ntfy push, and un-scoping the Linear skills from Hemut.
+Gaps Marshall must build: the poller and claims table, the cadence and overlap checks, the Haiku classifier, the autonomous planner, the hand-off writer, the dashboard, ntfy push, un-scoping the Linear skills from Hemut, and the Innovate agent's proposal store, reply commands, and spec writer.
 
 ## 12. Technology decisions
 
@@ -285,6 +299,7 @@ Gaps Marshall must build: the poller and claims table, the cadence and overlap c
 | Isolation | Worktree + per-agent Compose project + port offset | Serialize app-dependent steps |
 | Voice (later) | iOS Shortcut → webhook → Linear | Telegram voice note → Channels |
 | Always-on (later) | Undecided: Mac mini vs VPS vs Routines | — |
+| Proposal intake | `proposals` table in Marshall's SQLite + `marshall proposals` CLI replies; one ntfy push per run | Proposals as Linear Triage issues; dashboard card (iteration 2); Telegram replies (iteration 4) |
 
 ## 13. Roadmap
 
@@ -298,6 +313,7 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 - Hand-off package to Linear, PR, and file.
 - ntfy.sh push.
 - `claude agents` TUI as the dashboard.
+- **Last, after the dry run (step 11):** the Innovate agent. Scheduled `marshall-innovate` runs, the `proposals` table, `marshall proposals` replies, and the spec writer that turns a liked proposal plus my note into a Linear issue (section 16).
 
 ### Iteration 2 — Dashboard and hardening
 
@@ -305,6 +321,7 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 - Raise the cap to 3 if usage allows.
 - Linear OAuth agent so status shows natively in Linear.
 - Add approve-and-merge to the dashboard if it turns out to be the action I reach for.
+- Proposals card on the dashboard: Like / Pass with a note box, so I can answer the Innovate agent from my phone over Tailscale.
 
 ### Iteration 3 — Voice intake
 
@@ -314,8 +331,13 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 ### Iteration 4 — Marshall
 
 - Open-ended goals split into Linear issues, then run the same loop. No separate project agent.
-- Two-way chat over Telegram Channels.
+- Two-way chat over Telegram Channels. Replying to proposals moves here too.
 - Move to an always-on machine.
+
+### Later — Testing agent
+
+- Same proposal loop as the Innovate agent, for bugs: scan the repo, run the tests, find bugs, propose fixes, wait for my yes, file the issue.
+- Not scheduled. Section 16.8 lists what the Innovate agent reserves for it.
 
 ### Hemut rollout gate
 
@@ -334,6 +356,8 @@ Marshall touches the Hemut workspace only after ChessBuddy shows a run of issues
 | Laptop sleeps mid-run | Issue stuck in In Progress | Stall timeout + resume ×2 + reconcile on boot |
 | Notification fatigue | Too many pushes and I stop reading them | Push only on finished / blocked / over budget / crashed / rate-limit |
 | `claude --bg` immaturity | Verified only from `claude --help`; state format may change | `claude -p` fallback; same prompts and skills |
+| Proposal spam | Every proposal costs my attention and a Max start | Weekly `quick` run, cap on open proposals, skip when the backlog is full, graveyard so nothing is proposed twice |
+| Reply channel injection | My free-text note lands in an issue that an agent runs with full permissions | Replies come only from the CLI in iteration 1. Any remote reply channel must be authenticated: Tailscale dashboard, Telegram allow-list, or an ntfy reserved topic. |
 
 ---
 
@@ -376,3 +400,128 @@ Every question from v1, with the answer.
 - Move the claim lock to `delegate` once the OAuth agent exists (iteration 2).
 - The exact overlap-check heuristic (file globs from the plan? a Haiku guess from the issue text?).
 - What "proven" means for the Hemut rollout gate.
+- Innovate agent: proposal store in Marshall's DB or in Linear Triage, and the phone reply channel (section 16.9, step 11).
+
+---
+
+## 16. Innovate agent — added 2026-09-20
+
+**TLDR:** Everything above only builds work that I write down.
+The Innovate agent writes the work down for me.
+On a schedule it reads the ChessBuddy repo, proposes a few new features, and pushes them to my phone.
+I say "like" or "pass" and add a note.
+A liked proposal becomes a Linear issue that merges the agent's draft with my note, and a master agent builds it like any other issue.
+It is the same idea as my `/innovate` skill, made autonomous and wired into the loop.
+Build step: [`steps/11_innovate_agent.md`](steps/11_innovate_agent.md).
+It is the last step of iteration 1 and runs only after the dry run (step 10) proves the loop.
+
+### 16.1 What it is
+
+- A fork of the `/innovate` skill (`~/.claude/skills/innovate/`) named `marshall-innovate`.
+- It runs as a `claude --bg` session through the same runner as a master agent (step 03).
+- It reads the repo. It never writes code, never opens a PR, and never writes to Linear.
+- It writes proposals. The orchestrator files the Linear issue, and only after I say yes.
+
+That split is deliberate.
+The agent has full shell access, so it must not be the thing that creates work for other full-permission agents.
+A human yes sits between "idea" and "issue."
+
+### 16.2 Trigger and budget
+
+- Scheduled: default once a week, in `quick` mode, at a configured hour (`innovate.schedule`).
+- On demand: `marshall innovate [focus] [--quick]`.
+- A run takes one of the 2 agent slots and counts as one start against the daily cap and the 5-hour window cap.
+- A run is skipped, with a logged reason, when:
+  - open proposals are at or above `innovate.maxOpen` (default 6),
+  - the pickup-ready queue holds `innovate.maxBacklog` (default 5) or more issues,
+  - no slot is free, or a cap is reached.
+
+The last two rules stop the agent from proposing work when I already have more than the loop can take.
+
+### 16.3 What a run produces
+
+- `innovate.proposalsPerRun` proposals, default 3.
+- Only tiers 1 to 3 of the `/innovate` rubric: Sharpen, Missing piece, New capability.
+  Tier 4 and 5 stay in the manual `/innovate` skill.
+  A master agent cannot ship a moonshot in a 2-hour clock.
+- Every proposal keeps the `/innovate` anchoring rule: at least two named repo artifacts, verified to exist. No anchors, no proposal.
+- Each proposal is one file, `~/.marshall/proposals/<id>.md`, and one row in the `proposals` table:
+  - `kind` (`feature` now, `bug` later for the Testing agent), title, tier,
+  - a one-sentence pitch a 15-year-old would follow,
+  - the anchors, the person whose day changes, why now, the hard part,
+  - an **issue draft**: problem, proposed change, acceptance criteria, likely touched files, out of scope.
+- The issue draft is the part that becomes the Linear issue.
+  The rest goes into the issue as background so the planner (step 04) can read it.
+
+### 16.4 Proposal lifecycle
+
+```
+Proposed ──like (+note)──▶ Liked ──spec writer──▶ Filed (Linear issue id)
+   │
+   ├──pass (+reason)──▶ Passed
+   └──14 days silent──▶ Expired
+```
+
+- Passed and Expired proposals go into the graveyard.
+- The next run gets every graveyard title and reason in its prompt as "already proposed, do not repeat," exactly as `/innovate` does with its previous run file.
+- A run may supersede a graveyard idea only if it says which one and what changed.
+
+### 16.5 How I reply
+
+Iteration 1 (step 11), from the Mac:
+
+| Command | What it does |
+|---|---|
+| `marshall proposals` | List open proposals: id, tier, title, age |
+| `marshall proposals show <id>` | Print the proposal file |
+| `marshall proposals like <id> [--note "..."]` | Approve. The note is my input to the spec. |
+| `marshall proposals pass <id> [--note "..."]` | Decline. The note is the graveyard reason. |
+
+Later:
+
+- Iteration 2: a Proposals card on the dashboard with Like, Pass, and a note box. Reached over Tailscale from the phone.
+- Iteration 4: reply in the Telegram chat.
+
+Any reply channel that is not the local CLI must be authenticated.
+My note flows into an issue that an agent then runs with full permissions, so the channel is an injection path.
+See section 14 and open question 2 in step 11.
+
+### 16.6 From Liked to a Linear issue — the spec writer
+
+1. If I gave a note, the orchestrator runs one short `claude -p` call (Opus, non-bare so the Max login works) with the issue draft and my note.
+   It returns the final issue text.
+   Rules for that call: my note wins wherever it conflicts with the draft; nothing from my note may be dropped; my note appears verbatim under its own **Human input** heading; acceptance criteria must reflect the note.
+2. If I gave no note, the issue draft is used as-is. No model call.
+3. The orchestrator creates the issue through the Linear client (step 02): ChessBuddy team, state Todo, assigned to me, label `agent-proposed`, priority from my note if it names one, else No priority.
+   The description carries the issue draft, the Human input section, and a Background section with the proposal's anchors, tier, and hard part, ending `Origin: Marshall proposal <id>`.
+4. The proposal row moves to Filed with the issue id. `proposal_filed` is badge-only, no push.
+5. The next poll tick claims the issue like any other Todo issue.
+
+`agent-proposed` is a new team label, created by `marshall linear setup` next to `agent-filed`.
+It keeps agent-proposed work visible in Linear the way `agent-filed` does for follow-ups.
+
+### 16.7 Notifications
+
+- `proposals_ready`: one push per run with each proposal's id, tier, and title, default priority.
+- `proposal_filed`: badge only.
+- No push for a skipped run. The reason is in the log and in `marshall status`.
+
+### 16.8 Later — the Testing agent
+
+Not in scope now.
+When it comes, it is the same loop with a different scanner: run the tests, find bugs, propose fixes, wait for my yes, file the issue.
+The Innovate agent reserves these things for it so nothing has to be rebuilt:
+
+- The `kind` column on `proposals` (`feature` | `bug`).
+- The reply commands, the spec writer, the graveyard, and the push shape, all keyed by proposal id and not by kind.
+- The `agent-proposed` label, shared by both.
+
+### 16.9 Open questions
+
+Grill them with step 11.
+The two that matter most:
+
+1. **Proposal store.** This section keeps proposals in Marshall's SQLite until I say yes, as asked.
+   The alternative is to file every proposal straight into Linear in the Triage state (never pickable), reply by commenting and moving it to Todo, and let the spec writer rewrite the description on that move.
+   That reuses "Linear is the state machine" and the bounce mechanism, and gives a phone reply channel for free, at the cost of proposals showing up in Linear before I have seen them.
+2. **Phone replies in iteration 1.** CLI only, or an ntfy reply topic (needs a reserved topic or a shared secret, see section 14)?

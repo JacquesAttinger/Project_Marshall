@@ -1,11 +1,12 @@
 # Iteration 1 — Build Steps
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-20 10:55 CDT -->
 
-**TLDR:** Iteration 1 is split into 10 steps.
+**TLDR:** Iteration 1 is split into 11 steps.
 Each step is one Markdown file that one agent can carry out.
 Grill each file, then implement it.
 Steps in the same wave do not touch the same code, so they can run in parallel.
+Step 11, the Innovate agent, comes last and only after the dry run.
 
 Source spec: [`../project_marshall_plan.md`](../project_marshall_plan.md).
 
@@ -22,6 +23,7 @@ Source spec: [`../project_marshall_plan.md`](../project_marshall_plan.md).
                         └──────── 08 master agent (integration)
                                    └── 09 ops: launchd, ntfy, CLI
                                         └── 10 end-to-end dry run
+                                             └── 11 innovate agent
 ```
 
 ## Waves
@@ -34,6 +36,7 @@ Source spec: [`../project_marshall_plan.md`](../project_marshall_plan.md).
 | 4 | 08 | No | Wires 03–07 together. |
 | 5 | 09 | Partly | The ntfy client and launchd plist can start in wave 2. Final wiring needs 08. |
 | 6 | 10 | No | Runs the real thing on ChessBuddy. |
+| 7 | 11 | No | Only after 10 proves the loop. The skill fork can be drafted earlier. |
 
 ## Files
 
@@ -49,6 +52,7 @@ Source spec: [`../project_marshall_plan.md`](../project_marshall_plan.md).
 | 08 | [`08_master_agent_state_machine.md`](08_master_agent_state_machine.md) | Per-issue lifecycle: phases, bounces, timeouts, resumes, rate-limit pause |
 | 09 | [`09_ops_launchd_notifications_cli.md`](09_ops_launchd_notifications_cli.md) | launchd, caffeinate, ntfy push, `marshall status`, runbook |
 | 10 | [`10_e2e_dry_run.md`](10_e2e_dry_run.md) | Seed real issues, run for a day, tune, define "proven" |
+| 11 | [`11_innovate_agent.md`](11_innovate_agent.md) | Scheduled repo scan → feature proposals → my like/pass + note → Linear issue with my input merged in |
 
 ## How to use a step file
 
