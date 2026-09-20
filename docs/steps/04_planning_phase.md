@@ -83,7 +83,7 @@ Sections 5.3, 5.4, 6.1, 6.2, 7.1, 11, 12, 14 of `project_marshall_plan.md`.
 - [x] `classifyIssue` returns valid JSON for 5 sample issues in under 10 seconds each (`MARSHALL_LIVE=1 bun test tests/plan.live.test.ts`; 4–7 s each on 2026-09-20, all five as a human would label them).
 - [x] `runPlanPhase` in a worktree produces the plan file with all required sections, exactly one commit touching only that file, and posts one Linear comment (`tests/plan/phase.test.ts` with the fake shim and a temp repo).
 - [x] The plan file passes the section-heading check (`bin/marshall plan check`).
-- [ ] No `AskUserQuestion` calls appear in the transcript of a real run (checked by hand in the recorded run).
+- [x] No `AskUserQuestion` calls appear in the transcript of a real run. Recorded run on CHE-5, 2026-09-20: classified `complex` → Fable, 75 s, one commit touching only the plan file, one Linear comment; tool calls in the transcript were Read ×5, Bash ×4, Write ×1, Edit ×1, no Linear tool in the session. The revise run after a bounce comment took 68 s and added `## Revision 1` in one commit. Plan: [`../examples/health-endpoint-reports-api-version_plan.md`](../examples/health-endpoint-reports-api-version_plan.md).
 
 ## Open questions
 

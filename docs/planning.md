@@ -121,6 +121,13 @@ The answer is read from the envelope's `structured_output`, then from `result` a
 Observed on 2026-09-20 with Claude Code 2.1.278: 4–7 s per call, and all five fixtures in `tests/fixtures/issues/` classified the way a human would.
 `--max-budget-usd` only works with `--print`, so there is no token cap on the planner itself; the clock is the cap.
 
+## A recorded run
+
+[`examples/health-endpoint-reports-api-version_plan.md`](examples/health-endpoint-reports-api-version_plan.md) is the verbatim output of `bin/marshall plan CHE-5` on a fresh ChessBuddy worktree on 2026-09-20, plus the `## Revision 1` that `--revise` appended after a bounce comment.
+Fresh run: Haiku said `complex` (a public interface changes), Fable planned it in 75 s, one commit, nine sections, one Linear comment.
+Revise run: 68 s, one more commit touching only the plan.
+The transcript held no `AskUserQuestion` or `EnterPlanMode` call and no Linear tool.
+
 ## Running it by hand
 
 ```bash
