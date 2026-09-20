@@ -1,6 +1,6 @@
 # Agent runner — observed behaviour
 
-<!-- Last edited: 2026-09-20 12:50 CDT -->
+<!-- Last edited: 2026-09-20 17:40 CDT -->
 
 **TLDR:** This page records what the real `claude` daemon did when the runner drove it on 2026-09-19 (Claude Code 2.1.278).
 It shows the exact command line, what `claude agents --json` and `state.json` say in each lifecycle state, and the facts that changed the design during the live test.
@@ -22,6 +22,7 @@ The cmux shim rewrites `claude stop <id>` into a prompt (the agent answers "Stop
 The shim's own hook injection is not needed: agents get their hooks from `--settings`.
 `--strict-mcp-config` drops the claude.ai connectors (Linear, Gmail, Slack, Calendar) that otherwise load in every session authenticated with the claude.ai login, whatever `--setting-sources` says; agents must never reach Linear through the personal account.
 The spawned process also loses `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, and git's repo-location variables (`GIT_DIR`, `GIT_INDEX_FILE`, ...), so a nested launch is accepted and an agent started from a git hook commits to its own worktree.
+`src/gh.ts` (`runGh`) is the same shape for `gh`: argv in, stdout out, the binary from `MARSHALL_GH_BIN` (tests point it at `tests/fixtures/fake-gh`), and the same git-variable strip; the hand-off phase uses it to read and edit a PR body.
 `LaunchOpts.runId` lets a caller mint the run id first (`mintRunId`) and name files after it before the launch; the planner's brief is `~/.marshall/briefs/<runId>.md`.
 
 `--settings` is `agent-settings.json` plus one command hook per event in `SessionStart`, `Stop`, `StopFailure`, `SubagentStop`, `Notification`, `SessionEnd`.

@@ -1,6 +1,6 @@
 # Step 08 — Master Agent State Machine
 
-<!-- Last edited: 2026-09-20 10:56 CDT -->
+<!-- Last edited: 2026-09-20 17:35 CDT -->
 
 **TLDR:** The brain for one issue.
 It runs plan → implement → review → hand-off, watches the clock, restarts a stuck agent, and knows when to give up and call me.
@@ -31,7 +31,7 @@ Failure states: `Blocked`, `Stalled`, `Over Budget`, `Rate Limited`.
 
 - **Planning:** one call, `runPlanPhase({ db, linear, config, issue, cwd, mode, model?, waiter })` from `src/plan/index.ts` (step 04). It classifies, writes the brief, launches `/marshall:plan <brief>`, waits for the `Stop` hook, verifies with git that only the plan file changed, checks the headings, and posts the summary. Store `result.model` and `result.planPath` on the claim; a bounce reuses them.
 - **Implementing + Reviewing:** `runner.launch` with `/marshall-implement <plan> <issue> <slot>`. Done when the `Stop` hook arrives and a PR URL exists. `REVIEW_EXHAUSTED` → `Blocked`.
-- **Hand-off:** run the hand-off writer, `handoff.post()`, move the issue to Needs Verification, file `followups.json` via `linear.createFollowUp`, emit `finished`.
+- **Hand-off:** one call, `runHandoffPhase({ db, linear, config, issue, cwd, planPath, round?, waiter })` from `src/handoff/index.ts` (step 06). It launches `/marshall:handoff`, proves the worktree stayed clean, validates the file, resumes once if it is invalid, and posts the package to Linear and the PR body. Then move the issue to Needs Verification, file the `followups` from `implement.json` via `linear.createFollowUp` (after the hand-off, so the package lists titles only), emit `finished`. The rebase re-post is `postHandoff({ issue, linear, prUrl, cwd, round, badge: "rebased after <PR URL>" })` with no new writer run.
 - **Bounce:** on pickup of an issue with an existing branch, run Planning again in revise mode (`mode: "revise"`, `model` from the claim, `revision` = bounce count). The planner updates the plan and appends `## Revision N`. Then Implementing resumes on the same branch with the revised plan. Rewrite the hand-off at the end.
 - **Merge detection and Rebasing:** each tick, poll `gh pr view --json mergedAt` for every open Marshall PR. When one merges, every other open Marshall PR enters `Rebasing`: deterministic `git rebase origin/main` in its worktree, push, wait for CI. Clean and green → re-post the hand-off with a "rebased after <PR>" badge, back to `PR Open`. Conflict or red → launch a resolver run with `/marshall:resolve-conflicts` (the `resolving-merge-conflicts` skill copied into the plugin), then the full done gate (tests, lint, CI, `code-review`), then re-post the hand-off and push a notification. This replaces the overlap check that was dropped on 2026-09-20.
 
