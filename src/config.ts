@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 15:25 CDT
 // Typed loaders for marshall.config.json (committed) and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -23,6 +23,8 @@ export const ModelsSchema = z
     classifier: modelName.default("haiku"),
     planSimple: modelName.default("opus"),
     planComplex: modelName.default("fable"),
+    /** The hand-off writer. Falls back to `planSimple`; see `handoffModel()`. */
+    handoff: modelName.optional(),
   })
   .strict();
 
@@ -50,6 +52,8 @@ export const ConfigSchema = z
     maxResumes: positiveInt.default(2),
     /** Planner wall clock, inside the issue clock. Step 08 kills the run on expiry. */
     planMinutes: positiveInt.default(20),
+    /** Hand-off writer wall clock. The writer is read-only, so it should be well under this. */
+    handoffMinutes: positiveInt.default(10),
     models: ModelsSchema.default({ classifier: "haiku", planSimple: "opus", planComplex: "fable" }),
     /**
      * Host ports the target repo's Compose file reads from env, keyed by the env var name
@@ -61,6 +65,15 @@ export const ConfigSchema = z
   .strict();
 
 export type Config = Readonly<z.infer<typeof ConfigSchema>>;
+
+/**
+ * The model for the hand-off writer: `models.handoff` when set, else `models.planSimple`.
+ * A zod `.default()` on the optional key would be dropped by the `models` block's own default,
+ * so the fallback lives here.
+ */
+export function handoffModel(config: Config): string {
+  return config.models.handoff ?? config.models.planSimple;
+}
 
 export const EnvSchema = z.object({
   // Not `LINEAR_API_KEY`: a shell that exports the Hemut key would win over `.env` under Bun.

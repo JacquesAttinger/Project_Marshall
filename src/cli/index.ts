@@ -1,7 +1,8 @@
-// Last edited: 2026-09-20 17:00 CDT
+// Last edited: 2026-09-20 17:50 CDT
 // Hand-rolled dispatch. No CLI dependency. `bin/marshall` imports this file.
 
 import { runMigrate } from "./db.ts";
+import { runHandoffCheck } from "./handoff.ts";
 import { runLinearSetup } from "./linear.ts";
 import { runPlan, runPlanCheck } from "./plan.ts";
 import { runQueue } from "./queue.ts";
@@ -18,6 +19,8 @@ Commands:
                       Run the planning phase on one issue in an existing worktree
   plan check <file> [--json]
                       Check a plan file for the required sections
+  handoff check <file> [--json]
+                      Check a hand-off file: six sections, sub-lists, PR URL, branch
   queue [--json]      Dry-run one scheduler tick: the ordered pickable list and why each
                       issue would or would not start now. Never writes.
 
@@ -85,6 +88,10 @@ const COMMANDS: Record<string, Command> = {
       void (await runLinearSetup({ json: args.json, configPath: args.configPath })),
   },
   "plan check": { arity: 1, run: (args, [file]) => runPlanCheck(file as string, args.json) },
+  "handoff check": {
+    arity: 1,
+    run: (args, [file]) => runHandoffCheck(file as string, args.json),
+  },
   queue: {
     arity: 0,
     run: async (args) => void (await runQueue({ json: args.json, configPath: args.configPath })),

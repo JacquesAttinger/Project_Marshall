@@ -1,0 +1,45 @@
+#!/usr/bin/env bun
+// Last edited: 2026-09-20 15:35 CDT
+// A stand-in for the `gh` binary. Tests point MARSHALL_GH_BIN here.
+//   FAKE_GH_DIR                     where to record calls and keep the PR body (required)
+//   pr view <url> --json body       prints {"body": <contents of $FAKE_GH_DIR/pr_body.md>}
+//   pr edit <url> --body-file <f>   copies <f> over $FAKE_GH_DIR/pr_body.md
+//   FAKE_GH_FAIL                    when set, exit 1 with a message on stderr
+// Every call appends its argv to $FAKE_GH_DIR/calls.log, one JSON array per line.
+
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const dir = process.env.FAKE_GH_DIR;
+if (!dir) {
+  console.error("fake-gh: FAKE_GH_DIR is not set");
+  process.exit(2);
+}
+mkdirSync(dir, { recursive: true });
+const argv = process.argv.slice(2);
+appendFileSync(join(dir, "calls.log"), `${JSON.stringify(argv)}\n`);
+
+if (process.env.FAKE_GH_FAIL) {
+  console.error("fake-gh: forced failure");
+  process.exit(1);
+}
+
+const bodyPath = join(dir, "pr_body.md");
+const [group, verb] = argv;
+
+if (group === "pr" && verb === "view" && argv.includes("--json")) {
+  const body = existsSync(bodyPath) ? readFileSync(bodyPath, "utf8") : "";
+  process.stdout.write(`${JSON.stringify({ body })}\n`);
+} else if (group === "pr" && verb === "edit") {
+  const at = argv.indexOf("--body-file");
+  const file = at >= 0 ? argv[at + 1] : undefined;
+  if (!file) {
+    console.error("fake-gh: pr edit needs --body-file <file>");
+    process.exit(2);
+  }
+  copyFileSync(file, bodyPath);
+  process.stdout.write(`${argv[2] ?? ""}\n`);
+} else {
+  console.error(`fake-gh: unhandled args: ${argv.join(" ")}`);
+  process.exit(2);
+}

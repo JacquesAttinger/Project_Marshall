@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 15:25 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
@@ -10,6 +10,9 @@ import {
   claudeJobsDir,
   ensureHome,
   eventsDir,
+  handoffDir,
+  handoffMetaPath,
+  handoffPath,
   issueDir,
   issuesDir,
   transcriptPath,
@@ -70,6 +73,14 @@ describe("ensureHome", () => {
     expect(existsSync(eventsDir())).toBe(true);
     expect(briefsDir()).toBe(join(home.dir, "briefs"));
     expect(existsSync(briefsDir())).toBe(true);
+  });
+
+  test("creates the handoffs dir; handoffPath and handoffMetaPath sit under it", () => {
+    ensureHome();
+    expect(handoffDir()).toBe(join(home.dir, "handoffs"));
+    expect(existsSync(handoffDir())).toBe(true);
+    expect(handoffPath("CB-12")).toBe(join(home.dir, "handoffs", "CB-12.md"));
+    expect(handoffMetaPath("CB-12")).toBe(join(home.dir, "handoffs", "CB-12.json"));
   });
 
   test("creates the issues dir; issueDir nests the issue id under it", () => {

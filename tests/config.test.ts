@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 15:25 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -7,6 +7,7 @@ import { join } from "node:path";
 import {
   ConfigError,
   DEFAULT_CONFIG_PATH,
+  handoffModel,
   loadConfig,
   loadEnv,
   parseConfig,
@@ -47,6 +48,7 @@ describe("parseConfig", () => {
     expect(config.maxBounces).toBe(3);
     expect(config.maxResumes).toBe(2);
     expect(config.planMinutes).toBe(20);
+    expect(config.handoffMinutes).toBe(10);
     expect(config.models).toEqual({
       classifier: "haiku",
       planSimple: "opus",
@@ -96,6 +98,19 @@ describe("parseConfig", () => {
   });
 });
 
+describe("hand-off config", () => {
+  test("handoffModel falls back to planSimple and honours models.handoff", () => {
+    expect(handoffModel(parseConfig(minimal()))).toBe("opus");
+    expect(handoffModel(parseConfig({ ...minimal(), models: { planSimple: "sonnet" } }))).toBe(
+      "sonnet",
+    );
+    const explicit = parseConfig({ ...minimal(), models: { handoff: "haiku" } });
+    expect(explicit.models.handoff).toBe("haiku");
+    expect(handoffModel(explicit)).toBe("haiku");
+    expect(() => parseConfig({ ...minimal(), handoffMinutes: 0 })).toThrow(/handoffMinutes/);
+  });
+});
+
 describe("loadConfig", () => {
   test("MARSHALL_CONFIG override is honored", () => {
     const path = join(home.dir, "custom.json");
@@ -134,6 +149,8 @@ describe("loadConfig", () => {
     expect(config.workspace).toBe("chessbuddy");
     expect(config.teamId).toBe("91f682c4-ff2b-4fa3-a3d6-46c22ea3882d");
     expect(config.maxAgents).toBe(2);
+    expect(config.handoffMinutes).toBe(10);
+    expect(config.models.handoff).toBe("opus");
   });
 });
 

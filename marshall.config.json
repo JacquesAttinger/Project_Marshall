@@ -14,10 +14,12 @@
   "maxBounces": 3,
   "maxResumes": 2,
   "planMinutes": 20,
+  "handoffMinutes": 10,
   "models": {
     "classifier": "haiku",
     "planSimple": "opus",
-    "planComplex": "fable"
+    "planComplex": "fable",
+    "handoff": "opus"
   },
   "services": {
     "POSTGRES_HOST_PORT": 5432,

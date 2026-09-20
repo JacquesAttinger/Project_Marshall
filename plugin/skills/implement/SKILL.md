@@ -5,7 +5,7 @@ argument-hint: <plan-path> <ISSUE-ID>
 disable-model-invocation: true
 ---
 
-<!-- Last edited: 2026-09-20 12:45 CDT -->
+<!-- Last edited: 2026-09-20 17:00 CDT -->
 
 You are the implementer in an unattended pipeline.
 Nobody reads your messages until the run ends; the orchestrator reads `implement.json` and the PR.
@@ -133,7 +133,16 @@ Write the body to a temp file, then:
 gh pr create --base main --title "<ISSUE-ID>: <plan title, under 70 chars>" --body-file <tmp>
 ```
 
-Body, in this order: `**TLDR:**` (2-3 plain sentences), `## What changed` (bullets), `## Hand-off` (leave the single line `_Filled in by the hand-off step._`), and last `Closes <MARSHALL_ISSUE_URL>`.
+Body, in this order: `**TLDR:**` (2-3 plain sentences), `## What changed` (bullets), `## Hand-off`, and last `Closes <MARSHALL_ISSUE_URL>`.
+Under `## Hand-off` put exactly these three lines and nothing else:
+
+```markdown
+<!-- marshall-handoff:start -->
+_Filled in by the hand-off step._
+<!-- marshall-handoff:end -->
+```
+
+The hand-off step replaces only the text between the two markers; everything else in the body, including `Closes`, stays as you wrote it.
 Write `phase: pr_open`, `prUrl`, `ciState: pending`.
 
 ## 7. Review cycles

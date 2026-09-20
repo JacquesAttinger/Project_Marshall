@@ -1,10 +1,10 @@
 # Project Marshall
 
-<!-- Last edited: 2026-09-20 17:15 CDT -->
+<!-- Last edited: 2026-09-20 17:50 CDT -->
 
 **TLDR:** Marshall watches a Linear board and runs Claude Code agents on the issues.
 Iteration 1 is a Linear autopilot for one repo (ChessBuddy) on a laptop.
-So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), and the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart), and the scheduler (`src/scheduler/` polls Linear, checks the caps, claims, makes the worktree, and cleans up after a crash).
+So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart), the hand-off phase (`src/handoff/` runs the `/marshall:handoff` writer, checks its six-section package, and posts it to Linear and the PR body), and the scheduler (`src/scheduler/` polls Linear, checks the caps, claims, makes the worktree, and cleans up after a crash).
 
 ## Setup
 
@@ -31,9 +31,11 @@ Config is `marshall.config.json` at the repo root (override with `--config <path
 | `bin/marshall linear setup [--json]` | Create the Linear states and labels Marshall needs. Idempotent. Refuses a key from another workspace. |
 | `bin/marshall plan <identifier> --cwd <worktree> [--revise] [--json]` | Plan one issue in an existing worktree: classify, launch the planner, verify, post to Linear. |
 | `bin/marshall plan check <file>` | Check a plan file for the required sections, in order. |
+| `bin/marshall handoff check <file>` | Check a hand-off file: six sections in order, the section 5 sub-lists, a PR URL and a branch in section 6. |
 | `bin/marshall queue [--json]` | Dry-run one scheduler tick: the ordered pickable list and why each issue would or would not start now. Never writes. |
 | `MARSHALL_LINEAR_E2E=1 bun test tests/linear.e2e.test.ts` | Run the real-workspace Linear test. Skipped otherwise. |
 | `MARSHALL_LIVE=1 bun test tests/plan.live.test.ts` | Classify the five sample issues with the real Haiku. Skipped otherwise. |
+| `MARSHALL_LIVE=1 MARSHALL_LIVE_HANDOFF_CWD=<worktree> bun test tests/handoff.live.test.ts` | Run the real hand-off writer against a worktree with an open PR. Posts nothing. Skipped otherwise. |
 | `bun test` | Run the test suite. |
 | `bun run lint` / `bun run format` | Biome check / fix. |
 | `bun run typecheck` | `tsc --noEmit`. |
@@ -60,9 +62,11 @@ It is not the repo root because a plugin root's `bin/` goes on the agent's `PATH
 | `/marshall:plan <brief>` | The autonomous planner; see [`docs/planning.md`](docs/planning.md). |
 | `/marshall:implement <plan-path> <ISSUE-ID>` | Plan → commits → local gate → PR → CI → `/marshall:review` → fixes, up to `maxFixCycles` times. Writes `~/.marshall/issues/<ISSUE-ID>/implement.json` at every step (`src/implement/status.ts` has the schema). Always ends with a PR; a red run leaves a draft whose body starts with `## Still failing`. |
 | `/marshall:review <plan-path>` | The built-in `/code-review` bug hunt plus a Spec pass against the plan. `CONFIRMED` findings and spec gaps block; `PLAUSIBLE` ones are notes. |
+| `/marshall:handoff <plan-path> <ISSUE-ID>` | The read-only hand-off writer: six sections from the plan, the diff, and the PR into `~/.marshall/handoffs/<ISSUE-ID>.md`; see [`docs/handoff.md`](docs/handoff.md). |
 
 `bun scripts/launch-implement.ts --cwd <worktree> --plan docs/x_plan.md --issue CB-12 --slot 0 --watch` starts one implement run by hand until the orchestrator (step 08) exists.
 Each slot gets its own Compose project name and host ports; see [`docs/isolation.md`](docs/isolation.md).
+`bun scripts/launch-handoff.ts --cwd <worktree> --plan docs/x_plan.md --issue CB-12 [--post]` runs the hand-off writer on a finished branch, and with `--post` sends the package to Linear and the PR.
 
 ## Scheduler
 
@@ -89,5 +93,7 @@ A start that fails after Linear said yes parks the issue in `Blocked` with the r
 - [`docs/runner.md`](docs/runner.md) — agent runner: command line, lifecycle states, live-test facts.
 - [`docs/planning.md`](docs/planning.md) — planning phase: the brief, the skill, the classifier, the post-run checks.
 - [`docs/isolation.md`](docs/isolation.md) — slot → Compose project → ports, and how the env reaches an agent.
+- [`docs/handoff.md`](docs/handoff.md) — hand-off phase: the writer, the validation rules, the Linear comment, the PR-body splice, the sidecar.
+- [`docs/handoff_template.md`](docs/handoff_template.md) — what each of the six hand-off sections is for.
 - [`docs/step_07_queue_scheduler_plan.md`](docs/step_07_queue_scheduler_plan.md) — scheduler: decisions, tick order, reconcile.
 - [`plugin/README.md`](plugin/README.md) — the skills agents run, and how to try them by hand.

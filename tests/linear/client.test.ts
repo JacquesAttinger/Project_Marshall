@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-20 15:30 CDT
 
 import { describe, expect, test } from "bun:test";
 import { ConfigError } from "../../src/config.ts";
@@ -232,12 +232,23 @@ describe("setState and comment", () => {
     );
   });
 
-  test("comment appends the Marshall footer", async () => {
+  test("comment appends the Marshall footer and returns the comment id", async () => {
     const { fake, client } = await connect();
-    await client.comment("issue-1", "Plan posted.");
+    const created = await client.comment("issue-1", "Plan posted.");
+    expect(created).toEqual({ id: "comment-1" });
     expect(fake.callsFor("CreateComment")[0]?.variables).toEqual({
       input: { issueId: "issue-1", body: `Plan posted.${MARSHALL_COMMENT_FOOTER}` },
     });
+  });
+
+  test("updateComment edits the body in place, footer included", async () => {
+    const { fake, client } = await connect();
+    await client.updateComment("comment-1", "Hand-off, round 2.");
+    expect(fake.callsFor("UpdateComment")[0]?.variables).toEqual({
+      id: "comment-1",
+      input: { body: `Hand-off, round 2.${MARSHALL_COMMENT_FOOTER}` },
+    });
+    expect(fake.callsFor("CreateComment")).toHaveLength(0);
   });
 });
 

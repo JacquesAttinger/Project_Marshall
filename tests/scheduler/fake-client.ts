@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:20 CDT
+// Last edited: 2026-09-20 17:55 CDT
 // An in-memory LinearClient for scheduler tests. Keeps each issue's state and agent labels and
 // applies the same claim rules as the real client (unstarted + no agent label = claimable).
 // `tests/linear/fake-linear.ts` fakes the transport instead; this fakes the client.
@@ -119,6 +119,10 @@ export function fakeClient(issues: PickableIssue[] = []): FakeLinearClient {
     async comment(issueId, markdown) {
       calls.push({ method: "comment", issueId, arg: markdown });
       comments.push({ issueId, body: markdown });
+      return { id: `comment-${comments.length}` };
+    },
+    async updateComment() {
+      throw new Error("fake linear: updateComment is not part of the scheduler");
     },
     async createFollowUp() {
       throw new Error("fake linear: createFollowUp is not part of the scheduler");
