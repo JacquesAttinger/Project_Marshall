@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-20 17:50 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -62,6 +62,17 @@ describe("plan commands", () => {
       /does not exist/,
     );
     expect(existsSync(join(home.dir, "marshall.db"))).toBe(false);
+  });
+});
+
+describe("handoff commands", () => {
+  const handoffs = resolve(import.meta.dir, "fixtures", "handoffs");
+
+  test("handoff check exits 0 on a good file, 1 with problems otherwise, 2 without a file", async () => {
+    expect(await dispatch(["handoff", "check", join(handoffs, "good.md")])).toBe(0);
+    expect(await dispatch(["handoff", "check", join(handoffs, "no_pr.md"), "--json"])).toBe(1);
+    expect(await dispatch(["handoff", "check", "/nope.md"])).toBe(1);
+    expect(await dispatch(["handoff", "check"])).toBe(2);
   });
 });
 
