@@ -1,13 +1,13 @@
 # Step 02 — Linear Setup and Client
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** Make the ChessBuddy Linear workspace ready for robots, then write the one module that talks to Linear.
 Find issues, claim them, move them, comment on them, file follow-ups.
 
 ## Goal
 
-Every Linear read or write in Jarvis goes through one typed client, and the ChessBuddy workspace has the states and labels the loop needs.
+Every Linear read or write in Marshall goes through one typed client, and the ChessBuddy workspace has the states and labels the loop needs.
 
 ## Depends on / parallel with
 
@@ -17,7 +17,7 @@ Every Linear read or write in Jarvis goes through one typed client, and the Ches
 
 ## Spec references
 
-Sections 5.1, 5.3, 6.5, 12 of `project_jarvis_plan.md`.
+Sections 5.1, 5.3, 6.5, 12 of `project_marshall_plan.md`.
 Workspace: `https://linear.app/chessbuddy`, team ChessBuddy, team id `91f682c4-ff2b-4fa3-a3d6-46c22ea3882d`.
 
 ## In scope
@@ -26,14 +26,14 @@ Workspace: `https://linear.app/chessbuddy`, team ChessBuddy, team id `91f682c4-f
 
 - Add workflow state **Needs Verification**, type `started`, positioned after In Progress.
 - Add label `agent-filed`.
-- Decide the `jarvis:<agent-id>` label convention (create on demand, or a label group).
+- Decide the `marshall:<agent-id>` label convention (create on demand, or a label group).
 - Connect the GitHub integration to the ChessBuddy repo. Confirm auto-linking by branch name and "PR merged → Done." Turn off "PR opened → In Progress" if it fights the claim step.
 - Create a Linear API key for this workspace and store it outside the repo (for example `~/.claude/chessbuddy-linear-key`, matching the Hemut key file pattern).
 
 ### Client module `src/linear.ts`
 
 - `listPickable()` — state type `unstarted`, assignee me, delegate null, not archived. Returns id, identifier, title, description, priority, labels, `gitBranchName`, createdAt, comments.
-- `claim(issueId, agentId)` — one `issueUpdate` (delegate = me, state = In Progress, add `jarvis:<agent-id>` label), then re-read and return false if the delegate is not me.
+- `claim(issueId, agentId)` — one `issueUpdate` (delegate = me, state = In Progress, add `marshall:<agent-id>` label), then re-read and return false if the delegate is not me.
 - `setState(issueId, stateName)` — by name, resolving ids once and caching.
 - `comment(issueId, markdown)`.
 - `createFollowUp(originIssueId, {title, description})` — same team, label `agent-filed`, relation `related` to origin.

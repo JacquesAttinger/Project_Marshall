@@ -1,6 +1,6 @@
 # Step 07 — Queue and Scheduler
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** The part that looks at Linear every minute, decides which issue is next, checks that the caps allow a start, claims it, creates its worktree, and hands it to a master agent.
 It also cleans up after a crash.
@@ -17,7 +17,7 @@ A loop that never starts more than the caps allow, never starts two agents on ov
 
 ## Spec references
 
-Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_jarvis_plan.md`.
+Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_marshall_plan.md`.
 
 ## In scope
 
@@ -52,7 +52,7 @@ Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_jarvis_p
 - `src/scheduler.ts`, `src/caps.ts`, `src/overlap.ts`, `src/worktree.ts`.
 - `tests/caps.test.ts` with a fake clock: concurrency, daily rollover at midnight local, rolling 5-hour window.
 - `tests/scheduler.test.ts` with a fake Linear client and fake runner: ordering, skip on claim failure, bounce counting, pause flag, reconcile releases a dead claim.
-- `bin/jarvis queue` — prints the ordered pickable list and, for each, why it can or cannot start now.
+- `bin/marshall queue` — prints the ordered pickable list and, for each, why it can or cannot start now.
 
 ## Acceptance criteria
 
@@ -60,7 +60,7 @@ Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_jarvis_p
 - Daily count resets at local midnight; the window count uses a true rolling 5 hours.
 - An issue whose paths overlap an active claim is skipped with a logged reason and picked up later.
 - Killing the orchestrator mid-run and restarting it releases the dead claim and leaves Linear consistent.
-- `jarvis queue` output matches what the loop would do next.
+- `marshall queue` output matches what the loop would do next.
 
 ## Open questions for grilling
 

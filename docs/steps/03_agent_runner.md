@@ -1,6 +1,6 @@
 # Step 03 — Agent Runner
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** The module that starts a Claude agent in the background, watches it, tells the orchestrator when it stops, and can kill or resume it.
 It knows nothing about Linear or issues. It only knows sessions.
@@ -16,7 +16,7 @@ A thin, tested wrapper around `claude --bg` and the Claude daemon's job files, p
 
 ## Spec references
 
-Sections 4, 6.6, 10.1, 12 of `project_jarvis_plan.md`.
+Sections 4, 6.6, 10.1, 12 of `project_marshall_plan.md`.
 
 ## Verified CLI surface (from `claude --help`)
 

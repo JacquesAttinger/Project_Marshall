@@ -1,15 +1,15 @@
-# Project Jarvis — Planning Spec (v2)
+# Project Marshall — Planning Spec (v2)
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 ## TLDR
 
-Project Jarvis is a robot manager for my coding robots.
+Project Marshall is a robot manager for my coding robots.
 It watches my Linear to-do list, picks up open issues, and starts Claude agents that plan and build the fix.
 I do not sit at the keyboard.
 I watch a dashboard, get a push notification when a robot is done or stuck, and then decide if I need to test it by hand.
 Iteration 1 runs on my laptop, watches the ChessBuddy Linear workspace, and runs at most 2 agents at a time.
-Later, I talk to Jarvis from my phone and it turns my words into issues and agents.
+Later, I talk to Marshall from my phone and it turns my words into issues and agents.
 This is v2 of the spec.
 All 25 open questions from v1 are answered in section 15.
 
@@ -20,7 +20,7 @@ All 25 open questions from v1 are answered in section 15.
 I want to move from "I drive Claude" to "I supervise Claude."
 Today I find a Linear issue, run `/linear-plan`, answer questions, and ship.
 Tomorrow, a master agent finds the issue, plans it, builds it, opens a PR, and tells me what it did and how to check it.
-The end state is a Jarvis-style assistant.
+The end state is a Marshall-style assistant.
 I give it an open-ended goal by voice, and it splits the goal into Linear issues and runs the same loop.
 
 ## 2. Scope
@@ -35,12 +35,12 @@ I give it an open-ended goal by voice, and it splits the goal into Linear issues
 - I get a push notification when an agent finishes, is blocked, or the queue pauses for rate limits.
 - Agents file out-of-scope work as new Linear issues.
 
-### 2.2 North star — Jarvis
+### 2.2 North star — Marshall
 
-- I speak to Jarvis from my phone or Mac.
-- Jarvis turns speech into a Linear issue.
-- Jarvis takes open-ended goals ("build a first draft of this web app"), splits them into Linear issues, and runs the same loop.
-- Jarvis runs on an always-on machine, not my laptop.
+- I speak to Marshall from my phone or Mac.
+- Marshall turns speech into a Linear issue.
+- Marshall takes open-ended goals ("build a first draft of this web app"), splits them into Linear issues, and runs the same loop.
+- Marshall runs on an always-on machine, not my laptop.
 
 ### 2.3 Out of scope for iteration 1
 
@@ -58,7 +58,7 @@ I give it an open-ended goal by voice, and it splits the goal into Linear issues
 4. **Follow-ups are issues.** Anything an agent finds out of scope becomes a Linear issue that the loop picks up later.
 5. **Hard cap of 2 master agents, global.** Budget and rate limits, not ambition, set this number.
 6. **Push, do not poll.** I get a notification when an agent needs me. I do not watch the terminal.
-7. **Jarvis runs while I work.** It does not pause when I am on the laptop. I do LeetCode while Jarvis does my tickets.
+7. **Marshall runs while I work.** It does not pause when I am on the laptop. I do LeetCode while Marshall does my tickets.
 
 ## 4. Components
 
@@ -106,7 +106,7 @@ Failure paths: `Blocked` (agent gave up), `Stalled` (no tool call for 5 minutes)
 2. Order by Linear priority, then created date.
 3. Skip an issue if the daily cap (6 starts) or the window cap (2 starts per rolling 5 hours) is reached.
 4. Skip an issue if the overlap check says its likely code area collides with an active agent. Come back to it on a later tick.
-5. Claim with one atomic `issueUpdate`: set delegate to me, move to In Progress, add label `jarvis:<agent-id>`.
+5. Claim with one atomic `issueUpdate`: set delegate to me, move to In Progress, add label `marshall:<agent-id>`.
 6. Re-read the issue. If the delegate is not us, abort.
 7. Insert into the local SQLite claims table (unique constraint on issue ID).
 
@@ -238,7 +238,7 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 - The orchestrator runs as a launchd job. Templates exist in `~/Library/LaunchAgents/com.jacques.*`.
 - Agents launch with `claude --bg --name <issue-id>`. The Claude daemon supervises them, keeps a roster, and restarts them after a reboot.
 - HTTP hooks (`Stop`, `SessionEnd`, `Notification`) post to the orchestrator so it learns about completion without polling.
-- Jarvis keeps running while I use the laptop.
+- Marshall keeps running while I use the laptop.
 
 ### 10.2 Auth and budget — staying on Max
 
@@ -257,7 +257,7 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 
 ## 11. Reuse from the existing harness
 
-| Piece | Path | How Jarvis uses it |
+| Piece | Path | How Marshall uses it |
 |---|---|---|
 | `linear-plan` | `~/.claude/skills/linear-plan/` | Fork into an autonomous no-interview variant; its orientation format is the hand-off format |
 | `ship-plan` | `~/.claude/skills/ship-plan/` | The implementer step: worktree off `origin/main`, `.env` copy, tests, lint, rebase, PR, CI poll |
@@ -269,7 +269,7 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 | launchd templates | `~/Library/LaunchAgents/com.jacques.*` | Always-on scheduler on the laptop |
 | HTTP hooks | Claude Code hooks | Agent → orchestrator signaling |
 
-Gaps Jarvis must build: the poller and claims table, the cadence and overlap checks, the Haiku classifier, the autonomous planner, the hand-off writer, the dashboard, ntfy push, and un-scoping the Linear skills from Hemut.
+Gaps Marshall must build: the poller and claims table, the cadence and overlap checks, the Haiku classifier, the autonomous planner, the hand-off writer, the dashboard, ntfy push, and un-scoping the Linear skills from Hemut.
 
 ## 12. Technology decisions
 
@@ -311,7 +311,7 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 - iOS Shortcut → webhook → Linear issue.
 - A cheap model turns the transcript into a well-formed issue with acceptance criteria.
 
-### Iteration 4 — Jarvis
+### Iteration 4 — Marshall
 
 - Open-ended goals split into Linear issues, then run the same loop. No separate project agent.
 - Two-way chat over Telegram Channels.
@@ -319,7 +319,7 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 
 ### Hemut rollout gate
 
-Jarvis touches the Hemut workspace only after ChessBuddy shows a run of issues that landed without a bounce, and after section 14's accepted risks are re-reviewed.
+Marshall touches the Hemut workspace only after ChessBuddy shows a run of issues that landed without a bounce, and after section 14's accepted risks are re-reviewed.
 
 ## 14. Risks and accepted trade-offs
 
@@ -358,7 +358,7 @@ Every question from v1, with the answer.
 | 13 | Orphaned claims | 5-minute stall check + reconcile on boot. Resume up to 2 times, then one fresh start, then Blocked. |
 | 14 | Permission boundary | Full permissions. Accepted risk; revisit before Hemut. |
 | 15 | Secrets | Real `.env`, copied as `ship-plan` does. Accepted risk; revisit before Hemut. |
-| 16 | Budget and rate limits | Stay on Max. Reactive pause on rate-limit errors. 6 starts/day. 2 starts per rolling 5-hour window. Jarvis keeps running while I use the laptop. One push on pause, one on resume. |
+| 16 | Budget and rate limits | Stay on Max. Reactive pause on rate-limit errors. 6 starts/day. 2 starts per rolling 5-hour window. Marshall keeps running while I use the laptop. One push on pause, one on resume. |
 | 17 | Spawn mechanism | `claude --bg` + the built-in supervisor daemon, with HTTP hooks to the orchestrator. `claude -p` as fallback. **Cap lowered from 3 to 2.** |
 | 18 | Laptop setup | Desk, plugged in, lid open. `caffeinate -i`. |
 | 19 | Routines vs self-host | Self-hosted daemon on the laptop. |
@@ -367,7 +367,7 @@ Every question from v1, with the answer.
 | 22 | Push channel | ntfy.sh. Push on finished / blocked / over budget / crashed / rate-limit pause and resume. |
 | 23 | Dashboard actions | Read-only plus a Kill button. Approve, reject, reorder stay in GitHub and Linear. |
 | 24 | Voice intake | Deferred. Both options noted for iteration 3. |
-| 25 | Jarvis north star | Split open-ended goals into Linear issues and reuse the same loop. No separate project agent. |
+| 25 | Marshall north star | Split open-ended goals into Linear issues and reuse the same loop. No separate project agent. |
 
 ### Still open
 

@@ -1,6 +1,6 @@
 # Step 10 — End-to-End Dry Run
 
-<!-- Last edited: 2026-09-19 21:05 CDT -->
+<!-- Last edited: 2026-09-19 21:15 CDT -->
 
 **TLDR:** Turn it on for real, on ChessBuddy, for a day or two.
 Feed it real issues, break it on purpose, watch the pushes, read the hand-offs, then tune the caps and write down what "proven" means before Hemut.
@@ -16,7 +16,7 @@ Evidence that the full loop works unattended, and a written bar for the Hemut ro
 
 ## Spec references
 
-Sections 13 (Hemut rollout gate), 14, 15 "Still open" of `project_jarvis_plan.md`.
+Sections 13 (Hemut rollout gate), 14, 15 "Still open" of `project_marshall_plan.md`.
 
 ## In scope
 
@@ -27,14 +27,14 @@ Sections 13 (Hemut rollout gate), 14, 15 "Still open" of `project_jarvis_plan.md
 
 ### Run
 
-- Start Jarvis via launchd. Do not touch the terminal for the first two issues.
+- Start Marshall via launchd. Do not touch the terminal for the first two issues.
 - Confirm: 2 start, the third waits, the overlap one is skipped with a reason.
 - Read every hand-off cold. Score each: could I decide "merge as-is" vs "test by hand" from the package alone?
 - Merge at least one as-is. Bounce at least one with a comment and confirm the agent resumes the branch.
 
 ### Break
 
-- Kill an agent from `jarvis kill` mid-implement. Confirm `blocked` push and a clean claim.
+- Kill an agent from `marshall kill` mid-implement. Confirm `blocked` push and a clean claim.
 - Sleep the laptop for 10 minutes during a run. Confirm stall → resume.
 - Restart the orchestrator mid-run. Confirm reconcile continues, not duplicates.
 - Force a rate-limit error if possible (or replay a payload). Confirm pause, one push, resume.
@@ -48,7 +48,7 @@ Sections 13 (Hemut rollout gate), 14, 15 "Still open" of `project_jarvis_plan.md
 
 ## Out of scope
 
-- Fixing anything big. File follow-ups in the ChessBuddy workspace and let Jarvis pick them up.
+- Fixing anything big. File follow-ups in the ChessBuddy workspace and let Marshall pick them up.
 
 ## Deliverables
 
