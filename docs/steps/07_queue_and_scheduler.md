@@ -1,6 +1,6 @@
 # Step 07 — Queue and Scheduler
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-19 23:30 CDT -->
 
 **TLDR:** The part that looks at Linear every minute, decides which issue is next, checks that the caps allow a start, claims it, creates its worktree, and hands it to a master agent.
 It also cleans up after a crash.
@@ -21,7 +21,7 @@ Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_marshall
 
 ## In scope
 
-- Poll loop: every `pollSeconds` (30–60), call `listPickable()`.
+- Poll loop: every `pollSeconds` (30–60), call `listPickable()` (state type `unstarted`, assignee me, ChessBuddy team). Issues already carrying a `marshall/agent-*` label are skipped by `claim()`.
 - Ordering: Linear priority (Urgent first), then oldest created.
 - Caps, all read from config and the `starts` table:
   - concurrency: active claims < `maxAgents` (2);
@@ -33,7 +33,7 @@ Sections 5.3, 5.4, 6.6 (reconcile), 10.2 (caps and cadence) of `project_marshall
 - Claim: `linear.claim()`; on false, skip.
 - Worktree: `git worktree add ../ChessBuddy-<branch> -b <gitBranchName> origin/main` (or reuse on bounce), copy `.env` as `ship-plan` does. Assign the lowest free slot (0 or 1).
 - Insert the `claims` row and a `starts` row. Call `startMasterAgent`.
-- Reconcile on boot: for each `claims` row not in a terminal state, ask the runner (step 03) if the job is alive. If not, release: clear the delegate and move the issue back to Todo with a comment, or hand to step 08's resume logic. Log each decision.
+- Reconcile on boot: for each `claims` row not in a terminal state, ask the runner (step 03) if the job is alive. If not, release: call `linear.release(issueId, { comment })` (state → Todo, agent label removed), or hand to step 08's resume logic. Log each decision.
 
 ## Out of scope
 
