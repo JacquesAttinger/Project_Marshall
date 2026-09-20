@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 13:10 CDT
+// Last edited: 2026-09-20 17:00 CDT
 // The plugin is what the agents load with --plugin-dir; a broken manifest or a skill without
 // frontmatter fails silently inside an agent, so these checks run here instead.
 
@@ -10,7 +10,7 @@ const PLUGIN_ROOT = resolve(import.meta.dir, "..", "plugin");
 const SKILLS_DIR = join(PLUGIN_ROOT, "skills");
 
 /** The skills the rest of Marshall refers to by name. Add here when a step adds one. */
-const REQUIRED_SKILLS = ["plan", "implement", "review"];
+const REQUIRED_SKILLS = ["plan", "implement", "review", "handoff"];
 
 function frontmatter(path: string): Record<string, string> {
   const text = readFileSync(path, "utf8");
@@ -79,5 +79,58 @@ describe("skills", () => {
     ]) {
       expect(text).toContain(name);
     }
+  });
+
+  test("implement wraps the Hand-off placeholder in the two markers", async () => {
+    const { HANDOFF_END, HANDOFF_PLACEHOLDER, HANDOFF_START } = await import(
+      "../src/handoff/types.ts"
+    );
+    const text = readFileSync(join(SKILLS_DIR, "implement", "SKILL.md"), "utf8");
+    expect(text).toContain(`${HANDOFF_START}\n${HANDOFF_PLACEHOLDER}\n${HANDOFF_END}`);
+  });
+});
+
+describe("handoff skill", () => {
+  const path = join(SKILLS_DIR, "handoff", "SKILL.md");
+
+  test("is hidden from the model and takes plan path + issue id", () => {
+    const fields = frontmatter(path);
+    expect(fields["disable-model-invocation"]).toBe("true");
+    expect(fields["argument-hint"]).toBe("<plan-path> <ISSUE-ID>");
+  });
+
+  test("names every env var handoffEnv sets", async () => {
+    const { handoffEnv } = await import("../src/handoff/phase.ts");
+    const { parseConfig } = await import("../src/config.ts");
+    const config = parseConfig({ workspace: "w", teamId: "t", repoPath: PLUGIN_ROOT });
+    const text = readFileSync(path, "utf8");
+    const env = handoffEnv(
+      { identifier: "CB-1", url: "https://linear.app/x/issue/CB-1" },
+      "https://github.com/x/y/pull/1",
+      1,
+      config,
+    );
+    expect(Object.keys(env).sort()).toEqual([
+      "MARSHALL_BASE_BRANCH",
+      "MARSHALL_HANDOFF_PATH",
+      "MARSHALL_ISSUE_DIR",
+      "MARSHALL_ISSUE_URL",
+      "MARSHALL_PR_URL",
+      "MARSHALL_ROUND",
+    ]);
+    for (const name of Object.keys(env)) expect(text).toContain(name);
+  });
+
+  test("names the six sections, the sub-list labels, and the finish lines", async () => {
+    const { FOLLOWUPS_LABEL, HANDOFF_SECTIONS, REVIEW_NOTES_LABEL } = await import(
+      "../src/handoff/types.ts"
+    );
+    const text = readFileSync(path, "utf8");
+    for (const section of HANDOFF_SECTIONS) expect(text).toContain(section);
+    expect(text).toContain(`**${REVIEW_NOTES_LABEL}**`);
+    expect(text).toContain(`**${FOLLOWUPS_LABEL}**`);
+    expect(text).toContain("HANDOFF_WRITTEN");
+    expect(text).toContain("HANDOFF_BLOCKED");
+    expect(text).toContain("template.md");
   });
 });
