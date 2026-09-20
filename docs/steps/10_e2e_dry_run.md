@@ -1,6 +1,6 @@
 # Step 10 — End-to-End Dry Run
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-20 12:23 CDT -->
 
 **TLDR:** Turn it on for real, on ChessBuddy, for a day or two.
 Feed it real issues, break it on purpose, watch the pushes, read the hand-offs, then tune the caps and write down what "proven" means before Hemut.
@@ -28,9 +28,9 @@ Sections 13 (Hemut rollout gate), 14, 15 "Still open" of `project_marshall_plan.
 ### Run
 
 - Start Marshall via launchd. Do not touch the terminal for the first two issues.
-- Confirm: 2 start, the third waits, the overlap one is skipped with a reason.
+- Confirm: 2 start, the third waits. The two that touch the same file both run; after the first one merges, the second is rebased (step 08, Rebasing) and its hand-off is re-posted.
 - Read every hand-off cold. Score each: could I decide "merge as-is" vs "test by hand" from the package alone?
-- Merge at least one as-is. Bounce at least one with a comment and confirm the agent resumes the branch.
+- Merge at least one as-is. Bounce at least one with a comment and confirm the plan gains a `## Revision 1` and the agent resumes the branch.
 
 ### Break
 
