@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 22:00 CDT
 // `marshall status [--json]` — config, state dir, schema version, and row counts.
 
 import { existsSync } from "node:fs";
@@ -22,7 +22,7 @@ export function collectStatus(configPath?: string): StatusReport {
   const path = dbPath();
   const dbExists = existsSync(path);
   let version = 0;
-  let rows: Counts = { claims: 0, starts: 0, events: 0 };
+  let rows: Counts = { claims: 0, starts: 0, events: 0, runs: 0 };
   if (dbExists) {
     // Open read-only-ish: no migrate, no ensureHome. Status never changes state.
     const db = openDb(path);
@@ -68,6 +68,7 @@ export function formatStatus(report: StatusReport): string {
       ["claims", String(report.counts.claims)],
       ["starts", String(report.counts.starts)],
       ["events", String(report.counts.events)],
+      ["runs", String(report.counts.runs)],
     ]),
   ];
   return sections.join("\n");

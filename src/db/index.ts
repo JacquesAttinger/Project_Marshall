@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 22:00 CDT
 // SQLite via bun:sqlite. Numbered SQL migrations tracked with PRAGMA user_version.
 
 import { Database } from "bun:sqlite";
@@ -18,6 +18,7 @@ export interface Counts {
   claims: number;
   starts: number;
   events: number;
+  runs: number;
 }
 
 /** Open (or create) the database with WAL and foreign keys on. `:memory:` works for tests. */
@@ -74,5 +75,6 @@ export function counts(db: Database): Counts {
     claims: countRows(db, "claims"),
     starts: countRows(db, "starts"),
     events: countRows(db, "events"),
+    runs: countRows(db, "runs"),
   };
 }

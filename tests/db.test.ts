@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 22:00 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -42,21 +42,21 @@ function insertClaim(d: Database, issueId: string, slot: number, state: string):
 describe("migrate", () => {
   test("fresh DB starts at version 0 with zero counts", () => {
     expect(schemaVersion(db)).toBe(0);
-    expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0 });
+    expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
-  test("creates the three tables and sets user_version = 1", () => {
+  test("creates the four tables and sets user_version = 2", () => {
     const applied = migrate(db);
-    expect(applied.map((m) => m.name)).toEqual(["001_init.sql"]);
-    expect(tables(db)).toEqual(["claims", "events", "starts"]);
-    expect(schemaVersion(db)).toBe(1);
-    expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0 });
+    expect(applied.map((m) => m.name)).toEqual(["001_init.sql", "002_runs.sql"]);
+    expect(tables(db)).toEqual(["claims", "events", "runs", "starts"]);
+    expect(schemaVersion(db)).toBe(2);
+    expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
   test("second migrate applies nothing", () => {
     migrate(db);
     expect(migrate(db)).toHaveLength(0);
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(2);
   });
 
   test("listMigrations is sorted by number", () => {
