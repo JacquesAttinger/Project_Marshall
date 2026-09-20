@@ -42,7 +42,10 @@ export function slotEnv(slot: number, config: Config): Record<string, string> {
   return env;
 }
 
-/** `slotEnv` plus what `/marshall:implement` needs to find its status file and the issue. */
+/**
+ * `slotEnv` plus what `/marshall:implement` needs: where its status file goes, the issue URL for
+ * the PR body, and the review-cycle cap (`config.maxFixCycles`).
+ */
 export function implementEnv(
   issueId: string,
   issueUrl: string,
@@ -53,5 +56,6 @@ export function implementEnv(
     ...slotEnv(slot, config),
     MARSHALL_ISSUE_DIR: issueDir(issueId),
     MARSHALL_ISSUE_URL: issueUrl,
+    MARSHALL_MAX_CYCLES: String(config.maxFixCycles),
   };
 }

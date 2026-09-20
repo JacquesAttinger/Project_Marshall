@@ -1,0 +1,5 @@
+{
+  "name": "marshall",
+  "description": "Skills that Marshall's agents run inside a ChessBuddy worktree: implement a plan, review the diff.",
+  "version": "0.1.0"
+}

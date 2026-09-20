@@ -79,6 +79,10 @@ describe("implementEnv", () => {
     expect(env.API_HOST_PORT).toBe("8100");
     expect(env.MARSHALL_ISSUE_DIR).toBe(join(home.dir, "issues", "CB-12"));
     expect(env.MARSHALL_ISSUE_URL).toBe("https://linear.app/x/issue/CB-12");
+    expect(env.MARSHALL_MAX_CYCLES).toBe("4");
+    expect(implementEnv("CB-12", "u", 0, config({ maxFixCycles: 1 })).MARSHALL_MAX_CYCLES).toBe(
+      "1",
+    );
   });
 });
 
