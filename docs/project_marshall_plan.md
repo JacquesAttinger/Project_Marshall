@@ -1,6 +1,6 @@
 # Project Marshall — Planning Spec (v3)
 
-<!-- Last edited: 2026-09-20 10:50 CDT -->
+<!-- Last edited: 2026-09-20 12:22 CDT -->
 
 ## TLDR
 
@@ -73,7 +73,7 @@ The Innovate agent (section 16) is the first piece of that.
 
 | Component | Role | Decision |
 |---|---|---|
-| **Scheduler / queue** | Polls Linear, orders issues, enforces cap, cadence, and overlap check | launchd job + SQLite claims table |
+| **Scheduler / queue** | Polls Linear, orders issues, enforces cap and cadence | launchd job + SQLite claims table |
 | **Master agent** | One per issue. Owns the lifecycle. Dispatches planner and implementer. | Orchestrator process that launches `claude --bg --name <issue-id>` |
 | **Complexity classifier** | Picks Opus vs Fable for planning | Haiku, reads the issue title, body, priority, labels |
 | **Planner** | Reads the issue and the repo, writes a plan file, no human interview | Autonomous fork of `linear-plan`, run in plan mode |
@@ -115,30 +115,35 @@ Failure paths: `Blocked` (agent gave up), `Stalled` (no tool call for 5 minutes)
 1. Poll Linear every 30–60 s for issues in state type `unstarted`, assigned to me, in the ChessBuddy team.
 2. Order by Linear priority, then created date.
 3. Skip an issue if the daily cap (6 starts) or the window cap (2 starts per rolling 5 hours) is reached.
-4. Skip an issue if the overlap check says its likely code area collides with an active agent. Come back to it on a later tick.
-5. Pre-read the issue; skip it if it is no longer `unstarted` or already carries a `marshall/agent-*` label. Then one `issueUpdate`: move to In Progress, add label `marshall/agent-<slot>`, remove the other agent labels. (`delegate` only accepts agent users, so it waits for the iteration 2 OAuth agent.)
-6. Re-read the issue. If it is not In Progress with our label as the only agent label, abort.
-7. Insert into the local SQLite claims table (unique constraint on issue ID).
+4. Pre-read the issue; skip it if it is no longer `unstarted` or already carries a `marshall/agent-*` label. Then one `issueUpdate`: move to In Progress, add label `marshall/agent-<slot>`, remove the other agent labels. (`delegate` only accepts agent users, so it waits for the iteration 2 OAuth agent.)
+5. Re-read the issue. If it is not In Progress with our label as the only agent label, abort.
+6. Insert into the local SQLite claims table (unique constraint on issue ID).
 
-### 5.4 Overlap check
+### 5.4 Conflict resolution after merge
 
-Before pickup, a cheap pass estimates which files or modules the issue touches.
-If that set overlaps with an active agent's set, the issue waits.
-The goal is simple: two agents should not edit the same code at the same time.
+There is no overlap check at pickup (decided 2026-09-20, step 04 grilling).
+Two agents may touch the same code; the cost is a rebase later, and a guess from the issue text was never going to be reliable.
+When a Marshall PR merges, every other open Marshall PR is rebased on `origin/main` in its worktree.
+A clean rebase with green CI re-posts the hand-off with a badge.
+A conflict or red CI launches a resolver agent (`/marshall:resolve-conflicts`), then the full done gate, then a re-posted hand-off and a push notification.
+Details in step 08.
 
 ## 6. Master agent behavior
 
 ### 6.1 Model routing
 
-- A Haiku classifier reads the issue and returns `simple` or `complex`.
-- Planner: Opus for `simple`, Fable for `complex`.
+- A Haiku classifier reads the issue (title, description, priority, labels, comment count; no repo access) and returns `simple` or `complex`.
+- Planner: Opus for `simple`, Fable for `complex`. Complexity only; priority is an input to the classifier, not an override. Models come from `config.models`.
 - Implementer: Opus always.
 
 ### 6.2 Plan phase
 
-- Run an autonomous variant of `linear-plan`: same orientation walkthrough, no `/grilling`, no interview.
-- Write the plan to `docs/<topic>_plan.md` in the worktree.
-- Post a short summary comment on the Linear issue.
+- The orchestrator fetches the issue, writes a brief file, and launches `/marshall:plan <brief>` from the `marshall` plugin in the worktree. The agent has no Linear access (`--strict-mcp-config`).
+- The agent runs an autonomous variant of `linear-plan`: same orientation walkthrough, no `/grilling`, no interview, every open call recorded under "Decisions made alone".
+- The plan is committed on the issue branch as `docs/<topic>_plan.md`, one commit. The orchestrator verifies with git that nothing else changed and that the required sections are present.
+- The orchestrator posts the plan's TLDR and decisions as one comment on the Linear issue.
+- A bounce runs the planner again in revise mode: it updates the plan and appends `## Revision N` before implementation resumes.
+- Clock: `planMinutes` (20) inside the 2-hour issue clock. Built in step 04; see `planning.md`.
 
 ### 6.3 Implement phase
 
@@ -221,7 +226,7 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 ### 8.2 Queue
 
 - The next N pickup-ready issues in priority order.
-- Which ones are waiting on the overlap check, the daily cap, or the window cap.
+- Which ones are waiting on the daily cap or the window cap.
 
 ### 8.3 "Needs you" list
 
@@ -272,18 +277,20 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 
 | Piece | Path | How Marshall uses it |
 |---|---|---|
-| `linear-plan` | `~/.claude/skills/linear-plan/` | Fork into an autonomous no-interview variant; its orientation format is the hand-off format |
+| `linear-plan` | `~/.claude/skills/linear-plan/` | Forked into `skills/plan/` of the `marshall` plugin as the autonomous no-interview variant; its orientation format is the hand-off format |
 | `ship-plan` | `~/.claude/skills/ship-plan/` | The implementer step: worktree off `origin/main`, `.env` copy, tests, lint, rebase, PR, CI poll |
 | `code-review` | `~/.claude/skills/code-review/` | The second Claude pass in the done gate |
 | `linear-sync` | `~/.claude/skills/linear-sync/` | PR → Linear state sync (needs un-scoping from Hemut) |
-| `triage` | `~/.claude/skills/triage/` | AGENT-BRIEF format for the planner prompt |
+| `triage` | `~/.claude/skills/triage/` | AGENT-BRIEF was the model for the planner brief file |
 | `session-start-linear-suggest.sh` | `~/.claude/hooks/` | The queue poll query |
 | `claude --bg` + supervisor daemon | built in | Background sessions with readable job state |
 | launchd templates | `~/Library/LaunchAgents/com.jacques.*` | Always-on scheduler on the laptop |
 | HTTP hooks | Claude Code hooks | Agent → orchestrator signaling |
 | `innovate` | `~/.claude/skills/innovate/` | Fork into `marshall-innovate`: tiers 1–3 only, an issue draft per idea, graveyard read from the `proposals` table |
 
-Gaps Marshall must build: the poller and claims table, the cadence and overlap checks, the Haiku classifier, the autonomous planner, the hand-off writer, the dashboard, ntfy push, un-scoping the Linear skills from Hemut, and the Innovate agent's proposal store, reply commands, and spec writer.
+Gaps Marshall must build: the poller and claims table, the cadence checks, the post-merge rebase and resolver, the hand-off writer, the dashboard, ntfy push, un-scoping the Linear skills from Hemut, and the Innovate agent's proposal store, reply commands, and spec writer.
+Built: the Haiku classifier and the autonomous planner (step 04).
+Skills agents need must live in the `marshall` plugin at the repo root: agents launch with `--setting-sources project,local`, which never loads `~/.claude/skills/`.
 
 ## 12. Technology decisions
 
@@ -307,7 +314,7 @@ Gaps Marshall must build: the poller and claims table, the cadence and overlap c
 
 Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/README.md).
 
-- Poller + claims table + cap of 2 + daily cap + cadence + overlap check.
+- Poller + claims table + cap of 2 + daily cap + cadence. No overlap check; rebase after merge.
 - Haiku classifier + autonomous planner + `ship-plan` implementer + `code-review` reviewer.
 - Needs Verification state in the ChessBuddy workspace.
 - Hand-off package to Linear, PR, and file.
@@ -348,7 +355,7 @@ Marshall touches the Hemut workspace only after ChessBuddy shows a run of issues
 | Risk | Why it matters | Mitigation or decision |
 |---|---|---|
 | False "done" | ~45% of failing runs self-report success without a verifier | Deterministic done gate + `code-review` pass |
-| Parallel agents collide | Worktrees isolate files, not ports or the DB | Per-agent Compose project + port offset; overlap check at pickup |
+| Parallel agents collide | Worktrees isolate files, not ports or the DB | Per-agent Compose project + port offset; no overlap check, rebase every other open Marshall PR after a merge and run a resolver agent on conflict |
 | Prompt injection via issue body | An issue body drives an agent with full shell access | **Accepted for ChessBuddy.** Agents run with full permissions. Re-review before Hemut. |
 | Real secrets in every worktree | `.env` copied as-is, 2 always-on agents | **Accepted for ChessBuddy.** Re-review before Hemut. |
 | Follow-up loops | No depth cap on agent-filed issues | Daily cap and cadence are the brake; `agent-filed` label makes them visible |
@@ -378,7 +385,7 @@ Every question from v1, with the answer.
 | 9 | Model routing | Haiku classifier picks Opus vs Fable for planning. |
 | 10 | Retry and time budget | 4 fix cycles. 2 hours wall clock per issue. |
 | 11 | Shared services | Per-agent Docker Compose project name and port offset. |
-| 12 | Cap scope and overlap | Global cap. Worktrees always. Overlap check at pickup; prefer non-overlapping issues. |
+| 12 | Cap scope and overlap | Global cap. Worktrees always. No overlap check; rebase after merge, resolver agent on conflict (revised 2026-09-20). |
 | 13 | Orphaned claims | 5-minute stall check + reconcile on boot. Resume up to 2 times, then one fresh start, then Blocked. |
 | 14 | Permission boundary | Full permissions. Accepted risk; revisit before Hemut. |
 | 15 | Secrets | Real `.env`, copied as `ship-plan` does. Accepted risk; revisit before Hemut. |
@@ -398,7 +405,6 @@ Every question from v1, with the answer.
 - Which always-on machine (Q20).
 - Voice intake design (Q24).
 - Move the claim lock to `delegate` once the OAuth agent exists (iteration 2).
-- The exact overlap-check heuristic (file globs from the plan? a Haiku guess from the issue text?).
 - What "proven" means for the Hemut rollout gate.
 - Innovate agent: proposal store in Marshall's DB or in Linear Triage, and the phone reply channel (section 16.9, step 11).
 

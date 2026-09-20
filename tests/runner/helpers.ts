@@ -1,9 +1,9 @@
-// Last edited: 2026-09-19 22:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Runner test setup: temp MARSHALL_HOME, temp CLAUDE_CONFIG_DIR seeded with fixture jobs,
 // a migrated in-memory DB, and MARSHALL_CLAUDE_BIN pointed at the fake shim.
 
 import type { Database } from "bun:sqlite";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { migrate, openDb } from "../../src/db/index.ts";
@@ -26,6 +26,7 @@ const ENV_KEYS = [
   "MARSHALL_CLAUDE_BIN",
   "FAKE_CLAUDE_DIR",
   "FAKE_CLAUDE_FAIL",
+  "FAKE_CLAUDE_PLAN_SCRIPT",
 ];
 
 export function useRunnerEnv(): RunnerEnv {
@@ -40,6 +41,7 @@ export function useRunnerEnv(): RunnerEnv {
   process.env.MARSHALL_CLAUDE_BIN = FAKE_CLAUDE;
   process.env.FAKE_CLAUDE_DIR = fakeDir;
   delete process.env.FAKE_CLAUDE_FAIL;
+  delete process.env.FAKE_CLAUDE_PLAN_SCRIPT;
   const db = openDb(":memory:");
   migrate(db);
   return {
@@ -96,6 +98,12 @@ export function setFakeAgents(env: RunnerEnv, agents: Record<string, unknown>[])
 
 export function setFakeNextId(env: RunnerEnv, id: string): void {
   Bun.write(join(env.fakeDir, "next-id"), id);
+}
+
+/** Canned stdout for `fake-claude -p ...`. A string is written as-is; an object is JSON-encoded. */
+export function setFakePrint(env: RunnerEnv, output: string | Record<string, unknown>): void {
+  const text = typeof output === "string" ? output : JSON.stringify(output);
+  writeFileSync(join(env.fakeDir, "print.json"), text);
 }
 
 /** Read a hook fixture payload by name (`stop-empty`, `stop-failure-rate-limit`, ...). */

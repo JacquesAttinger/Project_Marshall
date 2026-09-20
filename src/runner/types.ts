@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -6,6 +6,8 @@ export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export interface LaunchOpts {
   /** Display name for `claude --name`. Step 08 passes the issue id. */
   name: string;
+  /** Pre-minted with `mintRunId()`, so a caller can name files after the run before it starts. */
+  runId?: string;
   cwd: string;
   prompt: string;
   /** Model alias or id, passed straight to `--model` (`opus`, `fable`, `haiku`, ...). */

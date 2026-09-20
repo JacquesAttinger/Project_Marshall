@@ -1,0 +1,22 @@
+{
+  "expected": "simple",
+  "issue": {
+    "id": "issue-cb-103",
+    "identifier": "CB-103",
+    "title": "Castling is allowed through an attacked square",
+    "description": "Queenside castling succeeds when the d1 square is attacked by a bishop. The move generator only checks the king's start and end squares.",
+    "priority": 1,
+    "url": "https://linear.app/chessbuddy/issue/CB-103",
+    "branchName": "cb-103-castling-through-check",
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "labels": ["bug", "engine"],
+    "comments": [],
+    "state": {
+      "name": "Todo",
+      "type": "unstarted"
+    },
+    "agentId": null,
+    "latestHumanComment": null,
+    "relatedIssueIds": []
+  }
+}

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // launch / resume / kill around `claude --bg`. The run id is minted before the spawn because the
 // hook command (which names the events file) must exist before the daemon's job id does.
 
@@ -45,6 +45,7 @@ export function buildArgv(runId: string, opts: ArgvOpts): string[] {
     "bypassPermissions",
     "--setting-sources",
     "project,local",
+    "--strict-mcp-config",
     "--settings",
     buildAgentSettings(runId),
   );
@@ -78,7 +79,7 @@ async function spawn(db: Database, runId: string, opts: ArgvOpts): Promise<Run> 
 /** Start a new background session. Resolves once the daemon has printed the job id. */
 export async function launch(db: Database, opts: LaunchOpts): Promise<Run> {
   ensureHome();
-  const runId = mintRunId(opts.name);
+  const runId = opts.runId ?? mintRunId(opts.name);
   insertRun(db, { runId, name: opts.name, cwd: opts.cwd });
   return spawn(db, runId, opts);
 }

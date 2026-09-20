@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Every path Marshall writes to derives from one root: MARSHALL_HOME or ~/.marshall.
 // Paths under the Claude daemon's home (CLAUDE_CONFIG_DIR or ~/.claude) are read-only for us.
 
@@ -33,6 +33,11 @@ export function logPath(): string {
 
 export function handoffDir(): string {
   return join(marshallHome(), "handoffs");
+}
+
+/** Issue briefs handed to planner agents: one `<runId>.md` per planning run. */
+export function briefsDir(): string {
+  return join(marshallHome(), "briefs");
 }
 
 /** Where agent hooks append their JSON lines: one `<runId>.jsonl` per run. */
@@ -70,7 +75,7 @@ export function transcriptPath(cwd: string, sessionId: string): string {
 /** Create the state directory tree. Safe to call repeatedly (`mkdir -p` semantics). */
 export function ensureHome(): string {
   const home = marshallHome();
-  for (const dir of [home, logDir(), handoffDir(), eventsDir()]) {
+  for (const dir of [home, logDir(), handoffDir(), eventsDir(), briefsDir()]) {
     mkdirSync(dir, { recursive: true });
   }
   return home;

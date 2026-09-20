@@ -1,6 +1,6 @@
 # Agent runner — observed behaviour
 
-<!-- Last edited: 2026-09-19 23:35 CDT -->
+<!-- Last edited: 2026-09-20 10:56 CDT -->
 
 **TLDR:** This page records what the real `claude` daemon did when the runner drove it on 2026-09-19 (Claude Code 2.1.278).
 It shows the exact command line, what `claude agents --json` and `state.json` say in each lifecycle state, and the facts that changed the design during the live test.
@@ -12,7 +12,7 @@ Re-run `MARSHALL_LIVE=1 bun test tests/runner.live.test.ts` to check these again
 
 ```
 claude --bg --name <name> [--resume <sessionId>] --model <model> [--effort <effort>] \
-  --permission-mode bypassPermissions --setting-sources project,local \
+  --permission-mode bypassPermissions --setting-sources project,local --strict-mcp-config \
   --settings '<agent-settings.json + per-run hooks>' \
   [--append-system-prompt <text>] [--max-budget-usd <n>] [...extraArgs] <prompt>
 ```
@@ -20,6 +20,9 @@ claude --bg --name <name> [--resume <sessionId>] --model <model> [--effort <effo
 The binary is `MARSHALL_CLAUDE_BIN`, else the first `claude` on `PATH` whose directory is not a `cmux-cli-shims` folder.
 The cmux shim rewrites `claude stop <id>` into a prompt (the agent answers "Stopped. Nothing is running"), so it must be skipped.
 The shim's own hook injection is not needed: agents get their hooks from `--settings`.
+`--strict-mcp-config` drops the claude.ai connectors (Linear, Gmail, Slack, Calendar) that otherwise load in every session authenticated with the claude.ai login, whatever `--setting-sources` says; agents must never reach Linear through the personal account.
+The spawned process also loses `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, and git's repo-location variables (`GIT_DIR`, `GIT_INDEX_FILE`, ...), so a nested launch is accepted and an agent started from a git hook commits to its own worktree.
+`LaunchOpts.runId` lets a caller mint the run id first (`mintRunId`) and name files after it before the launch; the planner's brief is `~/.marshall/briefs/<runId>.md`.
 
 `--settings` is `agent-settings.json` plus one command hook per event in `SessionStart`, `Stop`, `StopFailure`, `SubagentStop`, `Notification`, `SessionEnd`.
 Each hook runs `scripts/hook-sink.sh <MARSHALL_HOME>/events/<runId>.jsonl` and the sink appends `{"received_at": ..., "event": <payload>}` on one line.

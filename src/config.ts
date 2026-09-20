@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:55 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // Typed loaders for marshall.config.json (committed) and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -14,6 +14,16 @@ export class ConfigError extends Error {
 }
 
 const positiveInt = z.number().int().min(1);
+const modelName = z.string().min(1);
+
+/** Which Claude model each phase runs. Values go straight to `--model`. */
+export const ModelsSchema = z
+  .object({
+    classifier: modelName.default("haiku"),
+    planSimple: modelName.default("opus"),
+    planComplex: modelName.default("fable"),
+  })
+  .strict();
 
 export const ConfigSchema = z
   .object({
@@ -37,6 +47,9 @@ export const ConfigSchema = z
     maxFixCycles: positiveInt.default(4),
     maxBounces: positiveInt.default(3),
     maxResumes: positiveInt.default(2),
+    /** Planner wall clock, inside the issue clock. Step 08 kills the run on expiry. */
+    planMinutes: positiveInt.default(20),
+    models: ModelsSchema.default({ classifier: "haiku", planSimple: "opus", planComplex: "fable" }),
   })
   .strict();
 

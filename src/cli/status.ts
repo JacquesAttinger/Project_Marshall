@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:00 CDT
+// Last edited: 2026-09-20 10:56 CDT
 // `marshall status [--json]` — config, state dir, schema version, and row counts.
 
 import { existsSync } from "node:fs";
@@ -51,7 +51,7 @@ function table(rows: [string, string][]): string {
 
 export function formatStatus(report: StatusReport): string {
   const configRows = Object.entries(report.config).map(
-    ([k, v]) => [k, String(v)] as [string, string],
+    ([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : String(v)] as [string, string],
   );
   const sections = [
     `Config (${report.configPath})`,

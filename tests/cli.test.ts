@@ -1,8 +1,8 @@
-// Last edited: 2026-09-19 23:45 CDT
+// Last edited: 2026-09-20 10:56 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { dispatch, parseArgs } from "../src/cli/index.ts";
 import { collectStatus } from "../src/cli/status.ts";
 import { type TempHome, useTempConfig, useTempHome } from "./helpers.ts";
@@ -33,6 +33,35 @@ describe("parseArgs", () => {
   test("rejects unknown options and a dangling --config", () => {
     expect(() => parseArgs(["--bogus"])).toThrow(/Unknown option/);
     expect(() => parseArgs(["--config"])).toThrow(/needs a path/);
+    expect(() => parseArgs(["--cwd"])).toThrow(/--cwd needs a path/);
+  });
+
+  test("plan flags: --cwd (both spellings) and --revise", () => {
+    const p = parseArgs(["plan", "CB-12", "--cwd", "/wt", "--revise"]);
+    expect(p).toMatchObject({ positional: ["plan", "CB-12"], cwd: "/wt", revise: true });
+    expect(parseArgs(["plan", "CB-12", "--cwd=/wt2"]).cwd).toBe("/wt2");
+    expect(parseArgs(["status"]).revise).toBe(false);
+  });
+});
+
+describe("plan commands", () => {
+  const plans = resolve(import.meta.dir, "fixtures", "plans");
+
+  test("plan check exits 0 on a good file and 1 on a bad one", async () => {
+    expect(await dispatch(["plan", "check", join(plans, "good_plan.md")])).toBe(0);
+    expect(await dispatch(["plan", "check", join(plans, "missing_plan.md"), "--json"])).toBe(1);
+    expect(await dispatch(["plan", "check"])).toBe(2);
+    await expect(dispatch(["plan", "check", "/nope.md"])).rejects.toThrow(/No such file/);
+  });
+
+  test("plan needs an identifier and an existing --cwd before it touches anything", async () => {
+    expect(await dispatch(["plan"])).toBe(2);
+    expect(await dispatch(["plan", "CB-1", "extra"])).toBe(2);
+    await expect(dispatch(["plan", "CB-1"])).rejects.toThrow(/needs --cwd/);
+    await expect(dispatch(["plan", "CB-1", "--cwd", join(home.dir, "missing")])).rejects.toThrow(
+      /does not exist/,
+    );
+    expect(existsSync(join(home.dir, "marshall.db"))).toBe(false);
   });
 });
 

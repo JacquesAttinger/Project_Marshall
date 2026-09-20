@@ -1,0 +1,22 @@
+{
+  "expected": "complex",
+  "issue": {
+    "id": "issue-cb-105",
+    "identifier": "CB-105",
+    "title": "Sync games across devices",
+    "description": "Users want their games and analysis to show up on every device they sign in on. This needs an account model, a sync protocol, conflict handling when both devices edit the same game, and a migration for existing local-only data.",
+    "priority": 3,
+    "url": "https://linear.app/chessbuddy/issue/CB-105",
+    "branchName": "cb-105-multi-account-sync",
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "labels": ["feature", "backend"],
+    "comments": [],
+    "state": {
+      "name": "Todo",
+      "type": "unstarted"
+    },
+    "agentId": null,
+    "latestHumanComment": null,
+    "relatedIssueIds": []
+  }
+}
