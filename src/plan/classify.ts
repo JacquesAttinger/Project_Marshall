@@ -19,6 +19,15 @@ export const ClassificationSchema = z
 
 export const CLASSIFIER_TIMEOUT_MS = 60_000;
 
+/**
+ * The schema passed to `--json-schema`. zod adds a `$schema` draft URL, and Claude Code's validator
+ * (ajv) rejects a draft it has not loaded ("no schema with key or ref ..."), so it is dropped.
+ */
+export function classifierJsonSchema(): Record<string, unknown> {
+  const { $schema: _draft, ...schema } = z.toJSONSchema(ClassificationSchema);
+  return schema;
+}
+
 const PREAMBLE = `You are a triage classifier for a software team. Read the issue below and decide
 how complex the fix is. Answer with JSON only.
 
@@ -54,7 +63,7 @@ export function classifierArgv(prompt: string, model: string): string[] {
     "--output-format",
     "json",
     "--json-schema",
-    JSON.stringify(z.toJSONSchema(ClassificationSchema)),
+    JSON.stringify(classifierJsonSchema()),
     "--tools",
     "",
     "--strict-mcp-config",

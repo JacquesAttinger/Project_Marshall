@@ -1,11 +1,28 @@
 // Last edited: 2026-09-20 11:10 CDT
 // Plan-phase test setup: sample issues, a temp git repo with an `origin`, and a git runner.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { gitEnv } from "../../src/git.ts";
 import type { IssueDetail } from "../../src/linear/index.ts";
+
+const ISSUES = resolve(import.meta.dir, "..", "fixtures", "issues");
+
+export interface IssueFixture {
+  name: string;
+  /** The complexity a human would give it. */
+  expected: "simple" | "complex";
+  issue: IssueDetail;
+}
+
+/** The five sample issues under tests/fixtures/issues, sorted by file name. */
+export function issueFixtures(): IssueFixture[] {
+  return readdirSync(ISSUES)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => ({ name: f, ...JSON.parse(readFileSync(join(ISSUES, f), "utf8")) }));
+}
 
 export function sampleIssue(overrides: Partial<IssueDetail> = {}): IssueDetail {
   return {

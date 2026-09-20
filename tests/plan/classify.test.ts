@@ -1,10 +1,9 @@
 // Last edited: 2026-09-20 11:45 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync, realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync, realpathSync } from "node:fs";
+import { join } from "node:path";
 import { parseConfig } from "../../src/config.ts";
-import type { IssueDetail } from "../../src/linear/index.ts";
 import {
   classifierArgv,
   classifierPrompt,
@@ -14,17 +13,7 @@ import {
 } from "../../src/plan/classify.ts";
 import { PlanError } from "../../src/plan/types.ts";
 import { fakeCalls, type RunnerEnv, setFakePrint, useRunnerEnv } from "../runner/helpers.ts";
-import { sampleIssue } from "./helpers.ts";
-
-const ISSUES = resolve(import.meta.dir, "..", "fixtures", "issues");
-
-/** The five sample issues with the complexity a human would give each one. */
-export function issueFixtures(): { name: string; expected: string; issue: IssueDetail }[] {
-  return readdirSync(ISSUES)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({ name: f, ...JSON.parse(readFileSync(join(ISSUES, f), "utf8")) }));
-}
+import { issueFixtures, sampleIssue } from "./helpers.ts";
 
 let env: RunnerEnv;
 
@@ -54,6 +43,7 @@ describe("classifierPrompt / classifierArgv", () => {
     expect(argv.slice(0, 5)).toEqual(["-p", "--model", "haiku", "--output-format", "json"]);
     expect(argv[5]).toBe("--json-schema");
     const schema = JSON.parse(argv[6] as string);
+    expect(schema.$schema).toBeUndefined();
     expect(schema.properties.complexity.enum).toEqual(["simple", "complex"]);
     expect(schema.required).toEqual(["complexity", "reason"]);
     expect(schema.additionalProperties).toBe(false);
