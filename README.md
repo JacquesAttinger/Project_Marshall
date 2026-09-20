@@ -1,10 +1,10 @@
 # Project Marshall
 
-<!-- Last edited: 2026-09-19 23:25 CDT -->
+<!-- Last edited: 2026-09-19 23:45 CDT -->
 
 **TLDR:** Marshall watches a Linear board and runs Claude Code agents on the issues.
 Iteration 1 is a Linear autopilot for one repo (ChessBuddy) on a laptop.
-So far: runtime, config, SQLite, logging, CLI, quality gates, and the Linear client.
+So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, and the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them).
 
 ## Setup
 
@@ -37,8 +37,17 @@ Config is `marshall.config.json` at the repo root (override with `--config <path
 
 The pre-commit hook runs lint-staged (Biome + size check), typecheck, and tests.
 
+## Agent runner
+
+Each agent launch passes a `--settings` JSON whose hooks append one JSON line per event to `~/.marshall/events/<runId>.jsonl`.
+The runner watches that folder, writes the lines into the `events` table, and runs `claude stop` when the agent's turn ends.
+`bun test` covers the runner with a fake `claude` shim.
+`MARSHALL_LIVE=1 bun test tests/runner.live.test.ts` runs four real agents against the daemon (about 30 s, needs `claude` logged in).
+See [`docs/runner.md`](docs/runner.md) for the exact command line and what each lifecycle state looks like.
+
 ## Docs
 
 - [`docs/project_marshall_plan.md`](docs/project_marshall_plan.md) — the spec.
 - [`docs/steps/`](docs/steps/) — iteration 1 build steps.
 - [`docs/linear_setup.md`](docs/linear_setup.md) — what is configured in Linear and why.
+- [`docs/runner.md`](docs/runner.md) — agent runner: command line, lifecycle states, live-test facts.

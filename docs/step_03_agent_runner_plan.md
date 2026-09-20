@@ -1,6 +1,6 @@
 # Step 03 — Agent Runner — Implementation Plan
 
-<!-- Last edited: 2026-09-19 21:55 CDT -->
+<!-- Last edited: 2026-09-19 23:35 CDT -->
 
 **TLDR:** Build the module that starts a Claude agent in the background, learns when it stops, and can kill or resume it.
 Hooks inside the agent append JSON lines to a file under `~/.marshall/events/`.
@@ -216,6 +216,22 @@ All tests set `MARSHALL_HOME` to a temp dir and use `:memory:` (pattern from `te
 - `marshall status` prints a `runs` count.
 - `bun run check:size` reports no file over 500 lines and no function over 75.
 - After the live test, `claude rm` the test jobs so the daemon roster is clean.
+
+## Changes made while implementing
+
+The live test corrected four assumptions. Details and observed values are in `docs/runner.md`.
+
+- **Liveness is the roster entry's `pid`, not its `state`.** The daemon reports `state: done` as soon as the turn ends while the session stays resident; `pid` disappears only after `claude stop`.
+- **`--bg --resume` on a stopped session forks it** into a new session id and job id. `runs.resumed_from` keeps the old session id; `runs.session_id` is filled by the new `SessionStart` hook, so `resume()` no longer pre-fills it.
+- **The cmux PATH shim breaks `claude stop`** (it becomes a prompt). `claudeBin()` skips `cmux-cli-shims` directories when `MARSHALL_CLAUDE_BIN` is unset.
+- **The transcript slug uses the cwd's real path.** `transcriptPath()` resolves symlinks first (macOS `/var` → `/private/var`).
+
+Smaller deviations from the layout above:
+
+- Hook rows in `events` use `agent_id = runId` (not `jobId`): the run id exists before the daemon's id, so no ingest can race the launch.
+- `src/runner/claude.ts` (spawn wrapper) and `src/runner/store.ts` (SQL) are separate modules so `status.ts`, `events.ts`, and `launch.ts` share them without a cycle.
+- `hook-sink.sh` strips newlines from the payload so one event is always one line.
+- The stall criterion in the live test shifts `now` forward instead of touching the transcript's mtime: a fresh `SessionStart` row would otherwise mask the old mtime.
 
 ## Out of scope (unchanged from the step file)
 
