@@ -1,11 +1,13 @@
-// Last edited: 2026-09-20 12:45 CDT
+// Last edited: 2026-09-20 12:25 CDT
 // Dev launcher for one `/marshall:implement` run, until step 08's orchestrator exists.
 //
 //   bun scripts/launch-implement.ts --cwd <worktree> --plan docs/x_plan.md --issue CB-12 --slot 0
 //     [--issue-url <url>] [--model opus] [--effort high] [--max-budget-usd <n>] [--watch]
+//   bun scripts/launch-implement.ts --attach <runId>
 //
 // Prints the run id and job id. With --watch it stays up, ingests the run's hook events, stops the
-// session when its turn ends, and exits with the run's terminal state.
+// session when its turn ends, and exits with the run's terminal state. --attach does only that
+// watching part for a run that is already going (when an earlier watcher died).
 
 import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
@@ -26,6 +28,7 @@ import {
 const PLUGIN_DIR = resolve(import.meta.dir, "..", "plugin");
 
 interface Args {
+  attach?: string;
   cwd: string;
   plan: string;
   issue: string;
@@ -41,10 +44,21 @@ function usage(message?: string): never {
   if (message) console.error(message);
   console.error(
     "Usage: bun scripts/launch-implement.ts --cwd <worktree> --plan <path> --issue <ID> --slot <n>" +
-      " [--issue-url <url>] [--model opus] [--effort high] [--max-budget-usd <n>] [--watch]",
+      " [--issue-url <url>] [--model opus] [--effort high] [--max-budget-usd <n>] [--watch]\n" +
+      "       bun scripts/launch-implement.ts --attach <runId>",
   );
   process.exit(2);
 }
+
+const EMPTY: Args = {
+  cwd: "",
+  plan: "",
+  issue: "",
+  slot: 0,
+  model: "",
+  effort: "high",
+  watch: false,
+};
 
 export function parseArgs(argv: string[]): Args {
   const values: Record<string, string> = {};
@@ -58,6 +72,7 @@ export function parseArgs(argv: string[]): Args {
       values[a.slice(2)] = next;
     } else usage(`Unexpected argument: ${a}`);
   }
+  if (values.attach) return { ...EMPTY, attach: values.attach, watch: true };
   for (const key of ["cwd", "plan", "issue", "slot"]) {
     if (!values[key]) usage(`--${key} is required`);
   }
@@ -78,6 +93,15 @@ export function parseArgs(argv: string[]): Args {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.attach) {
+    const db = openDb();
+    const existing = getRun(db, args.attach);
+    if (!existing) usage(`unknown run ${args.attach}`);
+    console.log(`attached to run ${args.attach} (${existing.state})`);
+    await watchUntilTerminal(db, args.attach);
+    db.close();
+    return;
+  }
   const config = loadConfig();
   const issueUrl = args.issueUrl ?? `https://linear.app/${config.workspace}/issue/${args.issue}`;
   ensureHome();

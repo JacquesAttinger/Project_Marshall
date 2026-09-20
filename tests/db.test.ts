@@ -1,9 +1,17 @@
-// Last edited: 2026-09-19 22:00 CDT
+// Last edited: 2026-09-20 12:30 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { counts, listMigrations, migrate, openDb, schemaVersion } from "../src/db/index.ts";
+import { join } from "node:path";
+import {
+  BUSY_TIMEOUT_MS,
+  counts,
+  listMigrations,
+  migrate,
+  openDb,
+  schemaVersion,
+} from "../src/db/index.ts";
 import { dbPath, ensureHome } from "../src/paths.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
 
@@ -38,6 +46,43 @@ function insertClaim(d: Database, issueId: string, slot: number, state: string):
     [issueId, `agent-${slot}`, slot, state, NOW, NOW],
   );
 }
+
+describe("openDb", () => {
+  test("a second process's write waits for the first writer instead of failing at once", async () => {
+    ensureHome();
+    const path = dbPath();
+    const a = openDb(path);
+    migrate(a);
+    a.close();
+    const marker = join(home.dir, "locked");
+    // A separate process holds a write lock for 300 ms; a timer in this thread could not, because
+    // the blocked write below would stop the event loop.
+    const holder = Bun.spawn(
+      [
+        "bun",
+        "-e",
+        `const { Database } = require("bun:sqlite"); const db = new Database(${JSON.stringify(path)});
+         db.run("BEGIN IMMEDIATE"); require("fs").writeFileSync(${JSON.stringify(marker)}, "");
+         Bun.sleepSync(300); db.run("COMMIT"); db.close();`,
+      ],
+      { stdout: "ignore", stderr: "inherit" },
+    );
+    while (!existsSync(marker)) await Bun.sleep(10);
+    const b = openDb(path);
+    try {
+      expect(b.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()?.timeout).toBe(
+        BUSY_TIMEOUT_MS,
+      );
+      const started = Date.now();
+      insertClaim(b, "CB-2", 1, "queued"); // throws SQLITE_BUSY at once without the timeout
+      expect(Date.now() - started).toBeGreaterThanOrEqual(100);
+      expect(counts(b).claims).toBe(1);
+    } finally {
+      b.close();
+      await holder.exited;
+    }
+  });
+});
 
 describe("migrate", () => {
   test("fresh DB starts at version 0 with zero counts", () => {

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:00 CDT
+// Last edited: 2026-09-20 12:25 CDT
 // SQLite via bun:sqlite. Numbered SQL migrations tracked with PRAGMA user_version.
 
 import { Database } from "bun:sqlite";
@@ -21,11 +21,20 @@ export interface Counts {
   runs: number;
 }
 
-/** Open (or create) the database with WAL and foreign keys on. `:memory:` works for tests. */
+/** How long a writer waits for another process's lock before SQLITE_BUSY. */
+export const BUSY_TIMEOUT_MS = 5000;
+
+/**
+ * Open (or create) the database with WAL, foreign keys, and a busy timeout on. `:memory:` works
+ * for tests. The timeout matters because more than one Marshall process can hold the file
+ * (a launcher's watcher plus `marshall status`, or two launchers): without it the second writer
+ * fails at once instead of waiting for the other's transaction to finish.
+ */
 export function openDb(path: string = dbPath()): Database {
   const db = new Database(path, { create: true, strict: true });
   db.run("PRAGMA journal_mode = WAL");
   db.run("PRAGMA foreign_keys = ON");
+  db.run(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
   return db;
 }
 
