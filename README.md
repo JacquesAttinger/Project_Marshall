@@ -1,10 +1,10 @@
 # Project Marshall
 
-<!-- Last edited: 2026-09-20 13:05 CDT -->
+<!-- Last edited: 2026-09-20 17:15 CDT -->
 
 **TLDR:** Marshall watches a Linear board and runs Claude Code agents on the issues.
 Iteration 1 is a Linear autopilot for one repo (ChessBuddy) on a laptop.
-So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), and the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart).
+So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), and the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart), and the scheduler (`src/scheduler/` polls Linear, checks the caps, claims, makes the worktree, and cleans up after a crash).
 
 ## Setup
 
@@ -28,9 +28,10 @@ Config is `marshall.config.json` at the repo root (override with `--config <path
 |---|---|
 | `bin/marshall status [--json]` | Show config and DB state. Never writes. |
 | `bin/marshall db migrate` | Create the state dir and apply pending migrations. |
-| `bin/marshall linear setup [--json]` | Create the Linear state and labels Marshall needs. Idempotent. Refuses a key from another workspace. |
+| `bin/marshall linear setup [--json]` | Create the Linear states and labels Marshall needs. Idempotent. Refuses a key from another workspace. |
 | `bin/marshall plan <identifier> --cwd <worktree> [--revise] [--json]` | Plan one issue in an existing worktree: classify, launch the planner, verify, post to Linear. |
 | `bin/marshall plan check <file>` | Check a plan file for the required sections, in order. |
+| `bin/marshall queue [--json]` | Dry-run one scheduler tick: the ordered pickable list and why each issue would or would not start now. Never writes. |
 | `MARSHALL_LINEAR_E2E=1 bun test tests/linear.e2e.test.ts` | Run the real-workspace Linear test. Skipped otherwise. |
 | `MARSHALL_LIVE=1 bun test tests/plan.live.test.ts` | Classify the five sample issues with the real Haiku. Skipped otherwise. |
 | `bun test` | Run the test suite. |
@@ -63,6 +64,23 @@ It is not the repo root because a plugin root's `bin/` goes on the agent's `PATH
 `bun scripts/launch-implement.ts --cwd <worktree> --plan docs/x_plan.md --issue CB-12 --slot 0 --watch` starts one implement run by hand until the orchestrator (step 08) exists.
 Each slot gets its own Compose project name and host ports; see [`docs/isolation.md`](docs/isolation.md).
 
+## Scheduler
+
+`src/scheduler/` is the loop that decides when work starts (step 07).
+`startLoop` reconciles once, then ticks every `pollSeconds`.
+A tick lists the pickable issues (Todo, assigned to me), orders them by priority then age, and for each one in turn:
+
+1. Skips it while a claim row is still live, or blocks it when it has bounced `maxBounces` times.
+2. Checks the caps in `src/caps.ts`: `maxAgents` live claims, `dailyStartCap` starts on the local calendar day, `windowStartCap` starts in the last `windowHours`.
+   A bounce or a resume only faces the concurrency cap.
+   While `pause_until` (the `flags` table) is in the future, nothing starts.
+3. Writes a `claiming` row, claims in Linear, creates the worktree (`src/worktree.ts`, a sibling `<repo>-<branch>` off `origin/<baseBranch>` with `.env` copied in), records a `starts` row for a first-time start, and calls `hooks.start(claim, issue)`.
+
+Reconcile, on boot, walks every live claim: a `claiming` orphan and a dead claim out of resumes go back to Todo; a dead claim with budget goes through `hooks.resume`; a live one is kept.
+Step 08 supplies the hooks; until then `defaultHooks` logs on start and releases on resume.
+A start that fails after Linear said yes parks the issue in `Blocked` with the reason; moving it back to Todo retries it with a fresh bounce budget.
+`bin/marshall queue` shows exactly what the next tick would do.
+
 ## Docs
 
 - [`docs/project_marshall_plan.md`](docs/project_marshall_plan.md) — the spec.
@@ -71,4 +89,5 @@ Each slot gets its own Compose project name and host ports; see [`docs/isolation
 - [`docs/runner.md`](docs/runner.md) — agent runner: command line, lifecycle states, live-test facts.
 - [`docs/planning.md`](docs/planning.md) — planning phase: the brief, the skill, the classifier, the post-run checks.
 - [`docs/isolation.md`](docs/isolation.md) — slot → Compose project → ports, and how the env reaches an agent.
+- [`docs/step_07_queue_scheduler_plan.md`](docs/step_07_queue_scheduler_plan.md) — scheduler: decisions, tick order, reconcile.
 - [`plugin/README.md`](plugin/README.md) — the skills agents run, and how to try them by hand.
