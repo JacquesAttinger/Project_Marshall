@@ -1,0 +1,22 @@
+{
+  "expected": "simple",
+  "issue": {
+    "id": "issue-cb-102",
+    "identifier": "CB-102",
+    "title": "Importing an empty PGN file crashes the app",
+    "description": "Steps: File > Import, pick a 0-byte .pgn. The app throws `Cannot read properties of undefined (reading 'moves')` in the console and the import dialog stays open. Expected: a toast that says the file is empty.",
+    "priority": 2,
+    "url": "https://linear.app/chessbuddy/issue/CB-102",
+    "branchName": "cb-102-null-crash-on-empty-pgn",
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "labels": ["bug"],
+    "comments": [],
+    "state": {
+      "name": "Todo",
+      "type": "unstarted"
+    },
+    "agentId": null,
+    "latestHumanComment": null,
+    "relatedIssueIds": []
+  }
+}

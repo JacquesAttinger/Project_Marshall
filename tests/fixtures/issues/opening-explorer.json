@@ -1,0 +1,22 @@
+{
+  "expected": "complex",
+  "issue": {
+    "id": "issue-cb-104",
+    "identifier": "CB-104",
+    "title": "Add an opening explorer panel",
+    "description": "After each move, show the most common next moves from a master games database with win/draw/loss percentages. Needs a data source, a new panel next to the board, and caching so it stays fast offline.",
+    "priority": 2,
+    "url": "https://linear.app/chessbuddy/issue/CB-104",
+    "branchName": "cb-104-opening-explorer",
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "labels": ["feature"],
+    "comments": [],
+    "state": {
+      "name": "Todo",
+      "type": "unstarted"
+    },
+    "agentId": null,
+    "latestHumanComment": null,
+    "relatedIssueIds": []
+  }
+}

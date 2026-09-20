@@ -1,0 +1,22 @@
+{
+  "expected": "simple",
+  "issue": {
+    "id": "issue-cb-101",
+    "identifier": "CB-101",
+    "title": "Typo on the settings page: \"Prefrences\"",
+    "description": "The heading of the settings page reads \"Prefrences\". Should be \"Preferences\".",
+    "priority": 4,
+    "url": "https://linear.app/chessbuddy/issue/CB-101",
+    "branchName": "cb-101-typo-in-settings",
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "labels": ["bug"],
+    "comments": [],
+    "state": {
+      "name": "Todo",
+      "type": "unstarted"
+    },
+    "agentId": null,
+    "latestHumanComment": null,
+    "relatedIssueIds": []
+  }
+}

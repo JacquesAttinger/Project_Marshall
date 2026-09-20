@@ -1,8 +1,10 @@
 #!/bin/sh
-# Last edited: 2026-09-19 22:20 CDT
+# Last edited: 2026-09-20 11:40 CDT
 # A stand-in for the `claude` binary. Tests point MARSHALL_CLAUDE_BIN here.
 #   FAKE_CLAUDE_DIR   where to record calls and read canned output (required)
-#   --bg ...          appends argv to calls.log, prints "Started <id>" (id from next-id, else fa4e0001)
+#   --bg ...          appends argv to calls.log, prints "Started <id>" (id from next-id, else fa4e0001);
+#                     when FAKE_CLAUDE_PLAN_SCRIPT is set, runs `sh $FAKE_CLAUDE_PLAN_SCRIPT` first (in cwd)
+#   -p ...            prints print.json if present, else a canned "simple" classification envelope
 #   agents --json     prints agents.json (else "[]")
 #   stop|kill <id>    appends to calls.log and stops.log
 #   FAKE_CLAUDE_FAIL  when set, exit 3 with a message on stderr
@@ -26,7 +28,15 @@ case "${1:-}" in
     printf '%s\n' "${2:-}" >> "$dir/stops.log"
     echo "Stopped ${2:-}"
     ;;
+  -p)
+    if [ -f "$dir/print.json" ]; then
+      cat "$dir/print.json"
+    else
+      echo '{"type":"result","subtype":"success","is_error":false,"result":"{\"complexity\":\"simple\",\"reason\":\"canned\"}","structured_output":{"complexity":"simple","reason":"canned"}}'
+    fi
+    ;;
   --bg)
+    if [ -n "${FAKE_CLAUDE_PLAN_SCRIPT:-}" ]; then sh "$FAKE_CLAUDE_PLAN_SCRIPT"; fi
     id="fa4e0001"
     if [ -f "$dir/next-id" ]; then id="$(cat "$dir/next-id")"; fi
     echo "Started background session $id"
