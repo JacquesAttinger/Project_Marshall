@@ -1,6 +1,6 @@
 # Project Marshall — Planning Spec (v2)
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-19 23:30 CDT -->
 
 ## TLDR
 
@@ -102,12 +102,12 @@ Failure paths: `Blocked` (agent gave up), `Stalled` (no tool call for 5 minutes)
 
 ### 5.3 Pickup contract
 
-1. Poll Linear every 30–60 s for issues in state type `unstarted`, assigned to me, with no delegate.
+1. Poll Linear every 30–60 s for issues in state type `unstarted`, assigned to me, in the ChessBuddy team.
 2. Order by Linear priority, then created date.
 3. Skip an issue if the daily cap (6 starts) or the window cap (2 starts per rolling 5 hours) is reached.
 4. Skip an issue if the overlap check says its likely code area collides with an active agent. Come back to it on a later tick.
-5. Claim with one atomic `issueUpdate`: set delegate to me, move to In Progress, add label `marshall:<agent-id>`.
-6. Re-read the issue. If the delegate is not us, abort.
+5. Pre-read the issue; skip it if it is no longer `unstarted` or already carries a `marshall/agent-*` label. Then one `issueUpdate`: move to In Progress, add label `marshall/agent-<slot>`, remove the other agent labels. (`delegate` only accepts agent users, so it waits for the iteration 2 OAuth agent.)
+6. Re-read the issue. If it is not In Progress with our label as the only agent label, abort.
 7. Insert into the local SQLite claims table (unique constraint on issue ID).
 
 ### 5.4 Overlap check
@@ -277,7 +277,7 @@ Gaps Marshall must build: the poller and claims table, the cadence and overlap c
 |---|---|---|
 | Agent runtime | `claude --bg` + daemon, Max login | `claude -p` headless if `--bg` proves flaky |
 | Linear intake | Poll via Linear MCP / API key, 30–60 s | Linear OAuth agent + webhooks (v2, needs a tunnel) |
-| Claim lock | Linear atomic update + local SQLite | Linear AgentSession |
+| Claim lock | Linear state + `marshall` label group + local SQLite | Linear `delegate` / AgentSession once the OAuth agent exists |
 | Model routing | Haiku classifier → Opus or Fable | Fixed model |
 | Reviewer | `code-review` skill, second Claude pass | Cross-model (Codex) if quality demands it |
 | Dashboard | Local web app + Tailscale | `claude agents` TUI |
@@ -373,5 +373,6 @@ Every question from v1, with the answer.
 
 - Which always-on machine (Q20).
 - Voice intake design (Q24).
+- Move the claim lock to `delegate` once the OAuth agent exists (iteration 2).
 - The exact overlap-check heuristic (file globs from the plan? a Haiku guess from the issue text?).
 - What "proven" means for the Hemut rollout gate.

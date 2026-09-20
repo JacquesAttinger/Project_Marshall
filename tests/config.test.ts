@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:36 CDT
+// Last edited: 2026-09-19 21:55 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -10,6 +10,7 @@ import {
   loadConfig,
   loadEnv,
   parseConfig,
+  requireLinearApiKey,
   resolveConfigPath,
 } from "../src/config.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
@@ -26,14 +27,14 @@ afterEach(() => {
 
 /** A minimal valid config whose repoPath is the temp dir (always exists). */
 function minimal() {
-  return { workspace: "chessbuddy", repoPath: home.dir };
+  return { workspace: "chessbuddy", teamId: "team-1", repoPath: home.dir };
 }
 
 describe("parseConfig", () => {
   test("valid object passes and fills defaults", () => {
     const config = parseConfig(minimal());
     expect(config.workspace).toBe("chessbuddy");
-    expect(config.teamId).toBe("");
+    expect(config.teamId).toBe("team-1");
     expect(config.baseBranch).toBe("main");
     expect(config.maxAgents).toBe(2);
     expect(config.dailyStartCap).toBe(6);
@@ -51,6 +52,12 @@ describe("parseConfig", () => {
   test("maxAgents above 3 fails and names the key", () => {
     expect(() => parseConfig({ ...minimal(), maxAgents: 5 })).toThrow(ConfigError);
     expect(() => parseConfig({ ...minimal(), maxAgents: 5 })).toThrow(/maxAgents/);
+  });
+
+  test("teamId must be set", () => {
+    expect(() => parseConfig({ ...minimal(), teamId: "" })).toThrow(/teamId/);
+    const { teamId: _omitted, ...withoutTeam } = minimal();
+    expect(() => parseConfig(withoutTeam)).toThrow(/teamId/);
   });
 
   test("repoPath that is not a directory fails", () => {
@@ -104,20 +111,38 @@ describe("loadConfig", () => {
     expect(raw.repoPath).toBe("~/code/ChessBuddy");
     const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
     expect(config.workspace).toBe("chessbuddy");
+    expect(config.teamId).toBe("91f682c4-ff2b-4fa3-a3d6-46c22ea3882d");
     expect(config.maxAgents).toBe(2);
   });
 });
 
 describe("loadEnv", () => {
-  test("both keys are optional in step 01", () => {
+  test("both keys are optional at load time", () => {
     const env = loadEnv({});
-    expect(env.LINEAR_API_KEY).toBeUndefined();
+    expect(env.MARSHALL_LINEAR_API_KEY).toBeUndefined();
     expect(env.NTFY_TOPIC_PREFIX).toBeUndefined();
   });
 
   test("present keys pass through", () => {
-    const env = loadEnv({ LINEAR_API_KEY: "lin_x", NTFY_TOPIC_PREFIX: "marshall" });
-    expect(env.LINEAR_API_KEY).toBe("lin_x");
+    const env = loadEnv({ MARSHALL_LINEAR_API_KEY: "lin_x", NTFY_TOPIC_PREFIX: "marshall" });
+    expect(env.MARSHALL_LINEAR_API_KEY).toBe("lin_x");
     expect(env.NTFY_TOPIC_PREFIX).toBe("marshall");
+  });
+
+  test("the Hemut LINEAR_API_KEY is ignored", () => {
+    const env = loadEnv({ LINEAR_API_KEY: "lin_hemut" });
+    expect(env.MARSHALL_LINEAR_API_KEY).toBeUndefined();
+    expect(() => requireLinearApiKey(env)).toThrow(ConfigError);
+  });
+});
+
+describe("requireLinearApiKey", () => {
+  test("returns the key when set", () => {
+    expect(requireLinearApiKey(loadEnv({ MARSHALL_LINEAR_API_KEY: "lin_x" }))).toBe("lin_x");
+  });
+
+  test("names the variable and .env.example when missing", () => {
+    expect(() => requireLinearApiKey(loadEnv({}))).toThrow(/MARSHALL_LINEAR_API_KEY/);
+    expect(() => requireLinearApiKey(loadEnv({}))).toThrow(/\.env\.example/);
   });
 });

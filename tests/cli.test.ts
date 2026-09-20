@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 21:36 CDT
+// Last edited: 2026-09-19 22:30 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -37,18 +37,20 @@ describe("parseArgs", () => {
 });
 
 describe("dispatch", () => {
-  test("unknown command exits 2, help exits 0, no command exits 2", () => {
-    expect(dispatch(["frob"])).toBe(2);
-    expect(dispatch(["--help"])).toBe(0);
-    expect(dispatch([])).toBe(2);
+  test("unknown command exits 2, help exits 0, no command exits 2", async () => {
+    expect(await dispatch(["frob"])).toBe(2);
+    expect(await dispatch(["db"])).toBe(2);
+    expect(await dispatch(["status", "extra"])).toBe(2);
+    expect(await dispatch(["--help"])).toBe(0);
+    expect(await dispatch([])).toBe(2);
   });
 
-  test("db migrate creates the DB and status reports version 1", () => {
+  test("db migrate creates the DB and status reports version 1", async () => {
     const before = collectStatus();
     expect(before.dbExists).toBe(false);
     expect(before.schemaVersion).toBe(0);
 
-    expect(dispatch(["db", "migrate"])).toBe(0);
+    expect(await dispatch(["db", "migrate"])).toBe(0);
     expect(existsSync(join(home.dir, "marshall.db"))).toBe(true);
 
     const after = collectStatus();
@@ -58,8 +60,18 @@ describe("dispatch", () => {
     expect(after.marshallHome).toBe(home.dir);
   });
 
-  test("status does not create the DB", () => {
-    expect(dispatch(["status", "--json"])).toBe(0);
+  test("status does not create the DB", async () => {
+    expect(await dispatch(["status", "--json"])).toBe(0);
     expect(existsSync(join(home.dir, "marshall.db"))).toBe(false);
+  });
+
+  test("linear setup without a key fails with the ConfigError message", async () => {
+    const previous = process.env.MARSHALL_LINEAR_API_KEY;
+    delete process.env.MARSHALL_LINEAR_API_KEY;
+    try {
+      await expect(dispatch(["linear", "setup"])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY/);
+    } finally {
+      if (previous !== undefined) process.env.MARSHALL_LINEAR_API_KEY = previous;
+    }
   });
 });
