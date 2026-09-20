@@ -124,12 +124,22 @@ export function capCheck(db: Database, config: Config, now: Date, opts: CapOptio
   return evaluateCaps(readCapCounts(db, config, now), config, opts);
 }
 
-/** The counts after a start of the given kind, for a dry run. */
-export function countsAfterStart(counts: CapCounts, opts: CapOptions): CapCounts {
+/** The counts after a start at `now` of the given kind, for a dry run. */
+export function countsAfterStart(
+  counts: CapCounts,
+  opts: CapOptions,
+  now: Date,
+  config: Config,
+): CapCounts {
+  if (!opts.firstStart) return { ...counts, live: counts.live + 1 };
   return {
     ...counts,
     live: counts.live + 1,
-    today: opts.firstStart ? counts.today + 1 : counts.today,
-    window: opts.firstStart ? counts.window + 1 : counts.window,
+    today: counts.today + 1,
+    window: counts.window + 1,
+    // A start into an empty window is the one that will free it.
+    windowFreesAt:
+      counts.windowFreesAt ??
+      new Date(now.getTime() + config.windowHours * 3_600_000).toISOString(),
   };
 }

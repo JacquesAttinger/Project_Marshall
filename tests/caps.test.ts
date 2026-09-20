@@ -158,14 +158,15 @@ describe("dry-run helpers", () => {
       windowFreesAt: null,
       pausedUntil: null,
     });
-    const fresh = countsAfterStart(counts, { firstStart: true });
-    expect(fresh).toMatchObject({ live: 1, today: 1, window: 1 });
-    const bounce = countsAfterStart(counts, { firstStart: false });
-    expect(bounce).toMatchObject({ live: 1, today: 0, window: 0 });
-    const two = countsAfterStart(fresh, { firstStart: true });
+    const freesAt = new Date(NOW.getTime() + 5 * 3_600_000).toISOString();
+    const fresh = countsAfterStart(counts, { firstStart: true }, NOW, config);
+    expect(fresh).toMatchObject({ live: 1, today: 1, window: 1, windowFreesAt: freesAt });
+    const bounce = countsAfterStart(counts, { firstStart: false }, NOW, config);
+    expect(bounce).toMatchObject({ live: 1, today: 0, window: 0, windowFreesAt: null });
+    const two = countsAfterStart(fresh, { firstStart: true }, NOW, config);
     expect(evaluateCaps(two, config, { firstStart: true }).reasons).toEqual([
       "concurrency: 2 of 2 agents busy",
-      "window: 2 of 2 starts in the last 5 h",
+      `window: 2 of 2 starts in the last 5 h (next slot at ${freesAt})`,
     ]);
   });
 });
