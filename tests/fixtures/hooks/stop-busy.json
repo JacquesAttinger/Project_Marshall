@@ -1,0 +1,11 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/marshall-fixture/transcript.jsonl",
+  "cwd": "/tmp/marshall-fixture",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Running tests in the background.",
+  "background_tasks": [{ "task_id": "b1", "type": "local_bash", "description": "bun test" }],
+  "session_crons": []
+}

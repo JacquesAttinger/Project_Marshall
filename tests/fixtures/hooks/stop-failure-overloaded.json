@@ -1,0 +1,10 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/marshall-fixture/transcript.jsonl",
+  "cwd": "/tmp/marshall-fixture",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "StopFailure",
+  "error": "overloaded",
+  "error_details": "Overloaded",
+  "last_assistant_message": ""
+}
