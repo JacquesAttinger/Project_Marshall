@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:45 CDT
+// Last edited: 2026-09-19 23:20 CDT
 // launch / resume / kill around `claude --bg`. The run id is minted before the spawn because the
 // hook command (which names the events file) must exist before the daemon's job id does.
 
@@ -85,18 +85,14 @@ export async function launch(db: Database, opts: LaunchOpts): Promise<Run> {
 
 /**
  * Continue a stopped session in the background under a fresh run id. The caller supplies the
- * nudge prompt. `resumedFrom` records the session; the daemon keeps the same session id.
+ * nudge prompt. `resumedFrom` records the old session; the daemon forks the conversation into a
+ * new session id (and job id), which the SessionStart hook reveals.
  */
 export async function resume(db: Database, opts: ResumeOpts): Promise<Run> {
+  if (!opts.sessionId) throw new RunnerError("resume needs a sessionId");
   ensureHome();
   const runId = mintRunId(opts.name);
-  insertRun(db, {
-    runId,
-    name: opts.name,
-    cwd: opts.cwd,
-    resumedFrom: opts.sessionId,
-    sessionId: opts.sessionId,
-  });
+  insertRun(db, { runId, name: opts.name, cwd: opts.cwd, resumedFrom: opts.sessionId });
   return spawn(db, runId, { ...opts, resumeSessionId: opts.sessionId });
 }
 

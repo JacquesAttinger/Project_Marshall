@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:45 CDT
+// Last edited: 2026-09-19 23:20 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -104,7 +104,7 @@ describe("launch", () => {
 });
 
 describe("resume", () => {
-  test("passes --resume and records resumed_from and the session id", async () => {
+  test("passes --resume and records resumed_from; the new session id comes later", async () => {
     const run = await resume(env.db, {
       name: "CB-12",
       cwd: "/tmp",
@@ -112,12 +112,19 @@ describe("resume", () => {
       sessionId: "sess-1",
     });
     expect(run.resumedFrom).toBe("sess-1");
-    expect(run.sessionId).toBe("sess-1");
+    expect(run.sessionId).toBeNull();
     expect(run.jobId).toBe("fa4e0001");
     const [argv] = fakeCalls(env);
     expect(argv?.slice(0, 5)).toEqual(["--bg", "--name", "CB-12", "--resume", "sess-1"]);
     expect(argv).not.toContain("--model");
     expect(argv?.at(-1)).toBe("Continue.");
+  });
+
+  test("an empty session id is rejected before anything is spawned", async () => {
+    await expect(
+      resume(env.db, { name: "CB-12", cwd: "/tmp", prompt: "x", sessionId: "" }),
+    ).rejects.toBeInstanceOf(RunnerError);
+    expect(fakeCalls(env)).toEqual([]);
   });
 });
 

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:15 CDT
+// Last edited: 2026-09-19 23:20 CDT
 // Row helpers for the `runs` table and hook rows in `events`. All SQL for the runner lives here.
 
 import type { Database } from "bun:sqlite";
@@ -45,14 +45,13 @@ export interface NewRun {
   name: string;
   cwd: string;
   resumedFrom?: string | null;
-  sessionId?: string | null;
 }
 
 export function insertRun(db: Database, run: NewRun, now = new Date().toISOString()): Run {
   db.run(
-    `INSERT INTO runs (run_id, session_id, name, cwd, state, resumed_from, created_at)
-     VALUES (?, ?, ?, ?, 'starting', ?, ?)`,
-    [run.runId, run.sessionId ?? null, run.name, run.cwd, run.resumedFrom ?? null, now],
+    `INSERT INTO runs (run_id, name, cwd, state, resumed_from, created_at)
+     VALUES (?, ?, ?, 'starting', ?, ?)`,
+    [run.runId, run.name, run.cwd, run.resumedFrom ?? null, now],
   );
   return getRun(db, run.runId) as Run;
 }

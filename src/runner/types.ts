@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-19 23:20 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -18,7 +18,10 @@ export interface LaunchOpts {
 }
 
 export interface ResumeOpts extends Omit<LaunchOpts, "model"> {
-  /** The Claude session to continue. Must be stopped; a running one would be copied. */
+  /**
+   * The Claude session to continue. Must be stopped. The daemon forks it into a new session id
+   * and job id; the conversation carries over.
+   */
   sessionId: string;
   model?: string;
 }

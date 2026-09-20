@@ -1,7 +1,7 @@
-// Last edited: 2026-09-19 22:00 CDT
+// Last edited: 2026-09-19 23:20 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { claudeHome, claudeJobsDir, ensureHome, eventsDir, transcriptPath } from "../src/paths.ts";
@@ -41,6 +41,16 @@ describe("transcriptPath", () => {
     expect(transcriptPath("/Users/me/code/Project_Marshall", "abc")).toBe(
       "/cfg/projects/-Users-me-code-Project-Marshall/abc.jsonl",
     );
+  });
+
+  test("resolves symlinks first, as Claude Code does (macOS /var → /private/var)", () => {
+    process.env.CLAUDE_CONFIG_DIR = "/cfg";
+    const real = join(home.dir, "real");
+    const link = join(home.dir, "link");
+    mkdirSync(real);
+    symlinkSync(real, link);
+    expect(transcriptPath(link, "abc")).toBe(transcriptPath(real, "abc"));
+    expect(transcriptPath(link, "abc")).toContain(realpathSync(real).replace(/[^A-Za-z0-9]/g, "-"));
   });
 });
 
