@@ -5,7 +5,7 @@ argument-hint: <plan-path> <ISSUE-ID>
 disable-model-invocation: true
 ---
 
-<!-- Last edited: 2026-09-20 11:10 CDT -->
+<!-- Last edited: 2026-09-20 12:10 CDT -->
 
 You are the implementer in an unattended pipeline.
 Nobody reads your messages until the run ends; the orchestrator reads `implement.json` and the PR.
@@ -30,7 +30,15 @@ These stand in for the user's global instructions, which do not load here.
 
 ## The status file
 
-`$MARSHALL_ISSUE_DIR/implement.json`. Rewrite the whole file at every transition with `mkdir -p "$MARSHALL_ISSUE_DIR" && cat > "$MARSHALL_ISSUE_DIR/implement.json" <<'EOF' ... EOF`.
+`$MARSHALL_ISSUE_DIR/implement.json`. Rewrite the whole file at every transition, through a temp file and a rename so a reader never sees a half-written file:
+
+```bash
+mkdir -p "$MARSHALL_ISSUE_DIR" && cat > "$MARSHALL_ISSUE_DIR/implement.json.tmp" <<'JSON'
+{ ...the whole document... }
+JSON
+mv "$MARSHALL_ISSUE_DIR/implement.json.tmp" "$MARSHALL_ISSUE_DIR/implement.json"
+```
+
 Every field is present every time. `updatedAt` is `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
 ```json
