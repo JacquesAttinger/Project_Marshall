@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:25 CDT
+// Last edited: 2026-09-19 22:55 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
@@ -28,8 +28,10 @@ const CWD = "/tmp/marshall-fixture";
 const SESSION_1 = "00000000-0000-4000-8000-000000000001";
 const MINUTE = 60_000;
 
-function daemonEntry(id: string, state: string): Record<string, unknown> {
-  return { id, cwd: CWD, kind: "background", startedAt: 1, sessionId: SESSION_1, name: id, state };
+/** A roster entry. `pid` (and `status`) appear only while the session process is resident. */
+function daemonEntry(id: string, state: string, pid?: number): Record<string, unknown> {
+  const base = { id, cwd: CWD, kind: "background", startedAt: 1, sessionId: SESSION_1, name: id };
+  return pid === undefined ? { ...base, state } : { ...base, pid, status: "idle", state };
 }
 
 /** Write a transcript for `sessionId` and set its mtime to `at`. */
@@ -83,6 +85,7 @@ describe("listDaemonSessions", () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0]?.id).toBe("job00001");
     expect(sessions[0]?.state).toBe("failed");
+    expect(sessions[0]?.pid).toBeNull();
   });
 
   test("empty roster → []", async () => {
@@ -112,10 +115,10 @@ describe("status", () => {
     expect(s.lastActivityAt).toBeNull();
   });
 
-  test("daemon working → alive; tokens and last activity come through", async () => {
+  test("daemon entry with a pid → alive; tokens and last activity come through", async () => {
     insertRun(env.db, { runId: "r2", name: "n", cwd: CWD });
     updateRun(env.db, "r2", { jobId: "job00002", state: "running" });
-    setFakeAgents(env, [daemonEntry("job00002", "working")]);
+    setFakeAgents(env, [daemonEntry("job00002", "working", 4242)]);
     insertHookEvent(env.db, "r2", "SessionStart", "2026-09-19T20:05:00.000Z", {});
     const s = await status(env.db, "r2");
     expect(s.alive).toBe(true);
@@ -131,11 +134,20 @@ describe("status", () => {
     expect(s.daemonState).toBeNull();
   });
 
-  test("a run the runner already marked finished is not alive even if the daemon says working", async () => {
+  test("a run the runner already marked finished is not alive even with a daemon pid", async () => {
     insertRun(env.db, { runId: "r4", name: "n", cwd: CWD });
     updateRun(env.db, "r4", { jobId: "job00002", state: "finished" });
-    setFakeAgents(env, [daemonEntry("job00002", "working")]);
+    setFakeAgents(env, [daemonEntry("job00002", "working", 4242)]);
     expect((await status(env.db, "r4")).alive).toBe(false);
+  });
+
+  test("done but still resident (pid present) → alive, so an idle session can stall", async () => {
+    insertRun(env.db, { runId: "r5", name: "n", cwd: CWD });
+    updateRun(env.db, "r5", { jobId: "job00002", state: "running" });
+    setFakeAgents(env, [daemonEntry("job00002", "done", 4242)]);
+    const s = await status(env.db, "r5");
+    expect(s.alive).toBe(true);
+    expect(s.daemonState).toBe("done");
   });
 });
 
@@ -145,7 +157,7 @@ describe("isStalled", () => {
   beforeEach(() => {
     insertRun(env.db, { runId: "r", name: "n", cwd: CWD }, "2026-09-19T20:00:00.000Z");
     updateRun(env.db, "r", { jobId: "job00001", sessionId: SESSION_1, state: "running" });
-    setFakeAgents(env, [daemonEntry("job00001", "working")]);
+    setFakeAgents(env, [daemonEntry("job00001", "working", 4242)]);
   });
 
   test("true when transcript mtime and newest event are both older than the threshold", async () => {
@@ -166,7 +178,7 @@ describe("isStalled", () => {
     expect(await isStalled(env.db, "r", 5, now)).toBe(false);
   });
 
-  test("false when not alive", async () => {
+  test("false when not alive (no pid: the session was stopped)", async () => {
     setFakeAgents(env, [daemonEntry("job00001", "done")]);
     writeTranscript(SESSION_1, new Date(now - 10 * MINUTE));
     expect(await isStalled(env.db, "r", 5, now)).toBe(false);

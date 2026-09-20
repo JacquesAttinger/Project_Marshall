@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:20 CDT
+// Last edited: 2026-09-19 22:55 CDT
 // Three sources of truth, joined: `claude agents --json` (alive?), the transcript's mtime and the
 // newest hook event (still working?), and the daemon's state.json (ids, timestamps, tokens).
 
@@ -56,18 +56,20 @@ export function readJobState(jobId: string): JobState | null {
   };
 }
 
-/** One entry of `claude agents --json --all`, background kind only. */
+/**
+ * One entry of `claude agents --json --all`, background kind only. `pid` is present only while
+ * the session process is resident; `state` (`working`, `done`, `failed`) tracks the last turn, so
+ * a `done` job with a `pid` is idle but alive, and one without a `pid` has been stopped.
+ */
 export interface DaemonSession {
   id: string;
+  pid: number | null;
   cwd: string;
   sessionId: string | null;
   name: string | null;
   state: string;
   startedAt: number | null;
 }
-
-/** Daemon states that mean the job is no longer running. Anything else counts as alive. */
-export const DAEMON_TERMINAL_STATES = new Set(["done", "failed", "stopped", "killed", "exited"]);
 
 export async function listDaemonSessions(): Promise<DaemonSession[]> {
   const out = await runClaude(["agents", "--json", "--all"]);
@@ -84,6 +86,7 @@ export async function listDaemonSessions(): Promise<DaemonSession[]> {
       const r = e as Record<string, unknown>;
       return {
         id: String(r.id ?? ""),
+        pid: typeof r.pid === "number" ? r.pid : null,
         cwd: str(r.cwd) ?? "",
         sessionId: str(r.sessionId),
         name: str(r.name),
@@ -123,8 +126,7 @@ export async function status(db: Database, runId: string): Promise<RunStatus> {
     ? (await listDaemonSessions()).find((s) => s.id === run.jobId)
     : undefined;
   const sessionId = run.sessionId ?? job?.sessionId ?? daemon?.sessionId ?? null;
-  const alive =
-    !isTerminal(run.state) && daemon !== undefined && !DAEMON_TERMINAL_STATES.has(daemon.state);
+  const alive = !isTerminal(run.state) && daemon?.pid !== null && daemon?.pid !== undefined;
   return {
     run: { ...run, sessionId },
     alive,

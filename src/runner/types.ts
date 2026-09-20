@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:15 CDT
+// Last edited: 2026-09-19 22:55 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -44,9 +44,9 @@ export interface Run {
 
 export interface RunStatus {
   run: Run;
-  /** The daemon lists the job and does not report it as finished. */
+  /** The daemon lists the job with a live process (`pid` present in `claude agents --json`). */
   alive: boolean;
-  /** `state` from `claude agents --json`, or null when the job is not listed. */
+  /** `state` from `claude agents --json` (`working`, `done`, `failed`), or null when not listed. */
   daemonState: string | null;
   /** Newest of: transcript mtime, newest hook event. Null before either exists. */
   lastActivityAt: string | null;

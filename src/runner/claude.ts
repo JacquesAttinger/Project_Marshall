@@ -1,6 +1,8 @@
-// Last edited: 2026-09-19 22:15 CDT
+// Last edited: 2026-09-19 22:55 CDT
 // The one place that spawns the `claude` binary. Tests point MARSHALL_CLAUDE_BIN at a shim.
 
+import { existsSync } from "node:fs";
+import { delimiter, join } from "node:path";
 import { RunnerError } from "./types.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -8,9 +10,19 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /** Env vars that mark "inside a Claude session". Stripped so a nested launch is not refused. */
 const STRIP_ENV = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"];
 
+/**
+ * The binary to run: MARSHALL_CLAUDE_BIN, else the first `claude` on PATH outside cmux's shim
+ * directory. The cmux shim rewrites `claude stop <id>` into a prompt, so it must be skipped.
+ */
 export function claudeBin(): string {
   const override = process.env.MARSHALL_CLAUDE_BIN;
-  return override && override.length > 0 ? override : "claude";
+  if (override && override.length > 0) return override;
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0 || dir.includes("cmux-cli-shims")) continue;
+    const candidate = join(dir, "claude");
+    if (existsSync(candidate)) return candidate;
+  }
+  return "claude";
 }
 
 function spawnEnv(): Record<string, string> {

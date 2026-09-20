@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:05 CDT
+// Last edited: 2026-09-19 22:55 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -103,5 +103,17 @@ describe("hook-sink.sh", () => {
     const first = JSON.parse(lines[0] as string);
     expect(first.event).toEqual(payload);
     expect(Number.isNaN(Date.parse(first.received_at))).toBe(false);
+  });
+
+  test("a pretty-printed payload with a trailing newline still lands on one line", async () => {
+    const out = eventsFile("sink-multiline");
+    const payload = { hook_event_name: "Stop", last_assistant_message: "line1\nline2" };
+    const proc = Bun.spawn(["sh", HOOK_SINK_PATH, out], { stdin: "pipe", stdout: "ignore" });
+    proc.stdin.write(`${JSON.stringify(payload, null, 2)}\n`);
+    proc.stdin.end();
+    expect(await proc.exited).toBe(0);
+    const text = await Bun.file(out).text();
+    expect(text.trim().split("\n")).toHaveLength(1);
+    expect(JSON.parse(text).event).toEqual(payload);
   });
 });
