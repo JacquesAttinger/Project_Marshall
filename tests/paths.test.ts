@@ -1,10 +1,17 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 10:50 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { claudeHome, claudeJobsDir, ensureHome, eventsDir, transcriptPath } from "../src/paths.ts";
+import {
+  briefsDir,
+  claudeHome,
+  claudeJobsDir,
+  ensureHome,
+  eventsDir,
+  transcriptPath,
+} from "../src/paths.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
 
 let home: TempHome;
@@ -55,9 +62,11 @@ describe("transcriptPath", () => {
 });
 
 describe("ensureHome", () => {
-  test("creates the events dir under MARSHALL_HOME", () => {
+  test("creates the events and briefs dirs under MARSHALL_HOME", () => {
     ensureHome();
     expect(eventsDir()).toBe(join(home.dir, "events"));
     expect(existsSync(eventsDir())).toBe(true);
+    expect(briefsDir()).toBe(join(home.dir, "briefs"));
+    expect(existsSync(briefsDir())).toBe(true);
   });
 });
