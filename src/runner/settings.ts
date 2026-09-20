@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:05 CDT
+// Last edited: 2026-09-20 10:35 CDT
 // Builds the inline `--settings` JSON for one agent run: the committed agent-settings.json
 // plus a command hook per lifecycle event that appends to this run's events file.
 
@@ -57,8 +57,13 @@ export function hookCommand(runId: string): string {
  * Merge the run's hooks into the base settings and return the JSON string to pass as `--settings`.
  * Hooks already present in the base file are kept; ours are appended so both fire.
  * Hooks are synchronous so their order in the events file matches the order they fired.
+ * `env` is merged over the base file's `env`, so a per-run value wins over a committed default.
  */
-export function buildAgentSettings(runId: string, base: Json = loadBaseSettings()): string {
+export function buildAgentSettings(
+  runId: string,
+  base: Json = loadBaseSettings(),
+  env: Record<string, string> = {},
+): string {
   const command = hookCommand(runId);
   const existing = (base.hooks ?? {}) as Record<string, HookGroup[]>;
   const hooks: Record<string, HookGroup[]> = { ...existing };
@@ -68,5 +73,6 @@ export function buildAgentSettings(runId: string, base: Json = loadBaseSettings(
     };
     hooks[name] = [...(existing[name] ?? []), group];
   }
-  return JSON.stringify({ ...base, hooks });
+  const baseEnv = (base.env ?? {}) as Record<string, string>;
+  return JSON.stringify({ ...base, hooks, env: { ...baseEnv, ...env } });
 }

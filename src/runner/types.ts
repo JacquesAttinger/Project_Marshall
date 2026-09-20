@@ -17,6 +17,12 @@ export interface LaunchOpts {
   maxBudgetUsd?: number;
   /** Escape hatch for later steps (`--plugin-dir`, `--add-dir`, ...). Appended before the prompt. */
   extraArgs?: string[];
+  /**
+   * Environment for every Bash call the agent makes, merged into the settings `env` key.
+   * Bash state does not persist between an agent's tool calls, so this is the only way to hand
+   * the agent a value (a slot's Compose project name, the issue dir) that must hold for the run.
+   */
+  env?: Record<string, string>;
 }
 
 export interface ResumeOpts extends Omit<LaunchOpts, "model"> {

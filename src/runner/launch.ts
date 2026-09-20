@@ -47,7 +47,7 @@ export function buildArgv(runId: string, opts: ArgvOpts): string[] {
     "project,local",
     "--strict-mcp-config",
     "--settings",
-    buildAgentSettings(runId),
+    buildAgentSettings(runId, undefined, opts.env),
   );
   if (opts.systemPromptAppend) argv.push("--append-system-prompt", opts.systemPromptAppend);
   if (opts.maxBudgetUsd !== undefined) argv.push("--max-budget-usd", String(opts.maxBudgetUsd));

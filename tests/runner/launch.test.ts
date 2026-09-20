@@ -68,6 +68,13 @@ describe("buildArgv", () => {
     ]);
   });
 
+  test("env reaches the settings JSON", () => {
+    const argv = buildArgv("r", { ...BASE, env: { COMPOSE_PROJECT_NAME: "marshall-1" } });
+    const settings = JSON.parse(argv[argv.indexOf("--settings") + 1] as string);
+    expect(settings.env.COMPOSE_PROJECT_NAME).toBe("marshall-1");
+    expect(settings.env.ANTHROPIC_DEFAULT_FABLE_MODEL).toContain("fable");
+  });
+
   test("optional flags are omitted when unset", () => {
     const argv = buildArgv("r", BASE);
     for (const flag of ["--effort", "--append-system-prompt", "--max-budget-usd", "--resume"]) {

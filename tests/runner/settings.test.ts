@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-09-20 10:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -80,6 +80,21 @@ describe("buildAgentSettings", () => {
     expect(stop).toHaveLength(2);
     expect(stop[0]?.hooks[0]?.command).toBe("echo hi");
     expect(stop[1]?.hooks[0]?.command).toBe(hookCommand("run-1"));
+  });
+
+  test("per-run env merges over the base env; a per-run key wins", () => {
+    const base = { env: { KEEP: "base", OVERRIDE: "base" } };
+    const settings = parse(
+      buildAgentSettings("run-1", base, { OVERRIDE: "run", MARSHALL_SLOT: "1" }),
+    );
+    expect(settings.env).toEqual({ KEEP: "base", OVERRIDE: "run", MARSHALL_SLOT: "1" });
+  });
+
+  test("no per-run env leaves the committed env untouched", () => {
+    const base = loadBaseSettings();
+    const settings = parse(buildAgentSettings("run-1"));
+    expect(settings.env).toEqual(base.env);
+    expect(buildAgentSettings("run-1")).toBe(buildAgentSettings("run-1", undefined, {}));
   });
 
   test("shellQuote handles single quotes and spaces", () => {
