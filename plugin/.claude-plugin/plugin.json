@@ -1,5 +1,5 @@
 {
   "name": "marshall",
-  "description": "Skills that Marshall's agents run inside a ChessBuddy worktree: implement a plan, review the diff.",
+  "description": "Skills that Marshall's agents run inside an issue worktree: plan, implement, review. Loaded per launch with --plugin-dir.",
   "version": "0.1.0"
 }

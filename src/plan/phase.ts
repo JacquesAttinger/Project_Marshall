@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 13:10 CDT
 // runPlanPhase: classify → brief → launch the planner → wait → verify with git → check headings →
 // post the summary to Linear. Each step is small; the phase reads top to bottom.
 
@@ -14,8 +14,8 @@ import type { Classification, PlanFailure, PlanPhaseInput, PlanPhaseResult } fro
 import { planFilesOnBranch, verifyPlanCommit } from "./verify.ts";
 import { createRunWaiter } from "./wait.ts";
 
-/** The repo root: what `--plugin-dir` receives so `/marshall:plan` resolves inside the agent. */
-export const PLUGIN_DIR = resolve(import.meta.dir, "..", "..");
+/** `<repo>/plugin`: what `--plugin-dir` receives so `/marshall:plan` resolves inside the agent. */
+export const PLUGIN_DIR = resolve(import.meta.dir, "..", "..", "plugin");
 
 const log = createLogger({ module: "plan" });
 

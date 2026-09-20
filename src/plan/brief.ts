@@ -1,6 +1,6 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 13:10 CDT
 // Renders an IssueDetail to the Markdown brief a planner agent reads. The brief is the agent's only
-// source for the issue: facts only, no instructions (those live in skills/plan/SKILL.md).
+// source for the issue: facts only, no instructions (those live in plugin/skills/plan/SKILL.md).
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

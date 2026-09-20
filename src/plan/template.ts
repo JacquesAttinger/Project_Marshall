@@ -1,11 +1,19 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 13:10 CDT
 // The plan file's required sections and the heading check that enforces them. Pure text functions,
-// so the tests pass strings. The template the agent copies is skills/plan/template.md.
+// so the tests pass strings. The template the agent copies is plugin/skills/plan/template.md.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const TEMPLATE_PATH = resolve(import.meta.dir, "..", "..", "skills", "plan", "template.md");
+export const TEMPLATE_PATH = resolve(
+  import.meta.dir,
+  "..",
+  "..",
+  "plugin",
+  "skills",
+  "plan",
+  "template.md",
+);
 
 /** H2 headings, in this order. `TLDR` is also satisfied by a `**TLDR:**` paragraph under the H1. */
 export const REQUIRED_SECTIONS = [

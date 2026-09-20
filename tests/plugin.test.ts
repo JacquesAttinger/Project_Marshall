@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 11:15 CDT
+// Last edited: 2026-09-20 13:10 CDT
 // The plugin is what the agents load with --plugin-dir; a broken manifest or a skill without
 // frontmatter fails silently inside an agent, so these checks run here instead.
 
@@ -10,7 +10,7 @@ const PLUGIN_ROOT = resolve(import.meta.dir, "..", "plugin");
 const SKILLS_DIR = join(PLUGIN_ROOT, "skills");
 
 /** The skills the rest of Marshall refers to by name. Add here when a step adds one. */
-const REQUIRED_SKILLS = ["implement", "review"];
+const REQUIRED_SKILLS = ["plan", "implement", "review"];
 
 function frontmatter(path: string): Record<string, string> {
   const text = readFileSync(path, "utf8");
