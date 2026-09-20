@@ -2,7 +2,7 @@
 # Last edited: 2026-09-19 22:20 CDT
 # A stand-in for the `claude` binary. Tests point MARSHALL_CLAUDE_BIN here.
 #   FAKE_CLAUDE_DIR   where to record calls and read canned output (required)
-#   --bg ...          appends argv to calls.log, prints "Started <id>" (id from next-id, else fake0001)
+#   --bg ...          appends argv to calls.log, prints "Started <id>" (id from next-id, else fa4e0001)
 #   agents --json     prints agents.json (else "[]")
 #   stop|kill <id>    appends to calls.log and stops.log
 #   FAKE_CLAUDE_FAIL  when set, exit 3 with a message on stderr
@@ -27,7 +27,7 @@ case "${1:-}" in
     echo "Stopped ${2:-}"
     ;;
   --bg)
-    id="fake0001"
+    id="fa4e0001"
     if [ -f "$dir/next-id" ]; then id="$(cat "$dir/next-id")"; fi
     echo "Started background session $id"
     echo "Use 'claude attach $id' to open it"
