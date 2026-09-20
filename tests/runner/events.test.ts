@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:40 CDT
+// Last edited: 2026-09-20 12:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { appendFileSync, writeFileSync } from "node:fs";
@@ -94,6 +94,18 @@ describe("ingestFile", () => {
     expect(ingestFile(env.db, "nope")).toEqual([]);
   });
 
+  test("stop_blocked on a line lands on the event", () => {
+    newRun("r");
+    const blocked = {
+      received_at: "2026-09-19T21:00:00Z",
+      event: hookFixture("stop-empty"),
+      stop_blocked: true,
+    };
+    writeFileSync(eventsFile("r"), `${JSON.stringify(blocked)}\n${line("stop-empty")}`);
+    const events = ingestFile(env.db, "r");
+    expect(events.map((e) => e.stopBlocked)).toEqual([true, undefined]);
+  });
+
   test("a malformed line is skipped, the rest ingest", () => {
     newRun("r");
     writeFileSync(eventsFile("r"), `not json\n${line("stop-empty")}`);
@@ -108,6 +120,10 @@ describe("classify", () => {
 
   test("Stop with background tasks is not terminal", () => {
     expect(classify(event("stop-busy"))).toBeNull();
+  });
+
+  test("a Stop the guard blocked is not terminal", () => {
+    expect(classify({ ...event("stop-empty"), stopBlocked: true })).toBeNull();
   });
 
   test("StopFailure → failed with the error kind", () => {

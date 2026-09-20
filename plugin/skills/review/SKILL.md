@@ -4,7 +4,7 @@ description: Review the current branch's diff against origin/main on two axes - 
 argument-hint: <plan-path>
 ---
 
-<!-- Last edited: 2026-09-20 11:10 CDT -->
+<!-- Last edited: 2026-09-20 12:45 CDT -->
 
 Review the diff between `origin/main` and `HEAD` on two axes and report three lists.
 `/marshall:implement` fixes the two BLOCKING lists and carries NOTES into the hand-off.
@@ -62,5 +62,6 @@ Print exactly these three headings, each followed by a numbered list or `NONE`:
 <PLAUSIBLE findings from step 2, one line each, and (b) findings that are docs or tests only>
 ```
 
-End with one line: `REVIEW: <n> confirmed, <n> spec, <n> notes`.
+End the report with one line: `REVIEW: <n> confirmed, <n> spec, <n> notes`.
 Do not rerank across lists and do not fix anything.
+When `/marshall:implement` called you, the report is its input for the next step, not the end of the run: hand it over and continue that skill.

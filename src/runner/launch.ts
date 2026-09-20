@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 12:35 CDT
 // launch / resume / kill around `claude --bg`. The run id is minted before the spawn because the
 // hook command (which names the events file) must exist before the daemon's job id does.
 
@@ -47,7 +47,7 @@ export function buildArgv(runId: string, opts: ArgvOpts): string[] {
     "project,local",
     "--strict-mcp-config",
     "--settings",
-    buildAgentSettings(runId, undefined, opts.env),
+    buildAgentSettings(runId, undefined, { env: opts.env, statusFile: opts.statusFile }),
   );
   if (opts.systemPromptAppend) argv.push("--append-system-prompt", opts.systemPromptAppend);
   if (opts.maxBudgetUsd !== undefined) argv.push("--max-budget-usd", String(opts.maxBudgetUsd));

@@ -5,11 +5,12 @@ argument-hint: <plan-path> <ISSUE-ID>
 disable-model-invocation: true
 ---
 
-<!-- Last edited: 2026-09-20 12:10 CDT -->
+<!-- Last edited: 2026-09-20 12:45 CDT -->
 
 You are the implementer in an unattended pipeline.
 Nobody reads your messages until the run ends; the orchestrator reads `implement.json` and the PR.
 Work from the plan, keep the status file current, and always end with a PR.
+Your turn ends only at step 9: a Stop hook sends you back to work while `implement.json` has `outcome: null`, and after three such returns the run is counted as failed.
 
 `$ARGUMENTS` is `<plan-path> <ISSUE-ID>`.
 The runner sets these in your environment for every Bash call: `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_SLOT`, `MARSHALL_MAX_CYCLES`, `COMPOSE_PROJECT_NAME`, and one `*_HOST_PORT` var per service.
@@ -143,7 +144,8 @@ Repeat for `cycle` = 1 .. `maxCycles`:
    Red → write `ciState: red`, fix, run the local gate, commit, push, watch again. This stays inside the same cycle.
    Green → write `ciState: green`.
 2. Write `phase: reviewing`. Invoke the `Skill` tool with `skill: "marshall:review"` and `args: "<plan-path>"`.
-   Append its `NOTES (plausible)` lines to `reviewNotes` (skip duplicates).
+   Its three-list report is an intermediate result for you, not your final answer: do not end your turn after it.
+   Append its `NOTES (plausible)` lines to `reviewNotes` (skip duplicates) and go straight to 7.3.
 3. Both BLOCKING lists empty → `outcome: pr_green`, go to step 9.
 4. Otherwise write `phase: fixing`. Fix every BLOCKING finding.
    A finding you judge wrong after reading the code gets a one-line reply in the commit message and moves to `reviewNotes` prefixed `disputed:`.
