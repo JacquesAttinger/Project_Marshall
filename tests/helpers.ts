@@ -1,9 +1,10 @@
-// Last edited: 2026-09-19 21:55 CDT
+// Last edited: 2026-09-19 22:40 CDT
 // Shared test setup: an isolated MARSHALL_HOME per test so nothing touches ~/.marshall.
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Logger } from "../src/log.ts";
 
 export interface TempHome {
   dir: string;
@@ -44,4 +45,33 @@ export function useTempConfig(home: TempHome, overrides: Record<string, unknown>
   );
   process.env.MARSHALL_CONFIG = path;
   return path;
+}
+
+export interface LogLine {
+  level: string;
+  event: string;
+  fields: Record<string, unknown>;
+}
+
+/** An in-memory Logger. Nothing touches disk, and tests can assert on what was logged. */
+export function recordingLogger(base: Record<string, unknown> = {}): {
+  log: Logger;
+  lines: LogLine[];
+} {
+  const lines: LogLine[] = [];
+  const make = (fields: Record<string, unknown>): Logger => {
+    const push =
+      (level: string) =>
+      (event: string, extra: Record<string, unknown> = {}) => {
+        lines.push({ level, event, fields: { ...fields, ...extra } });
+      };
+    return {
+      debug: push("debug"),
+      info: push("info"),
+      warn: push("warn"),
+      error: push("error"),
+      child: (more) => make({ ...fields, ...more }),
+    };
+  };
+  return { log: make(base), lines };
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-19 22:30 CDT
 import { main } from "../src/cli/index.ts";
 
-main();
+await main();
