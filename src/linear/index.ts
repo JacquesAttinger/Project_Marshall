@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:25 CDT
+// Last edited: 2026-09-20 15:15 CDT
 // Public surface of the Linear module. Steps 06, 07, and 08 import from here.
 
 export {
@@ -23,6 +23,7 @@ export {
   AGENT_IDS,
   type AgentId,
   agentLabelName,
+  BLOCKED_STATE,
   IN_PROGRESS_STATE,
   type IssueComment,
   type IssueDetail,

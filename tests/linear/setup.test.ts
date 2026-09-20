@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:00 CDT
+// Last edited: 2026-09-20 15:15 CDT
 
 import { describe, expect, test } from "bun:test";
 import { createGql } from "../../src/linear/gql.ts";
@@ -11,7 +11,9 @@ type Team = TeamMeta;
 
 function emptyTeam(): Team {
   const team = fullTeamData().team;
-  team.states.nodes = team.states.nodes.filter((s) => s.name !== "Needs Verification");
+  team.states.nodes = team.states.nodes.filter(
+    (s) => s.name !== "Needs Verification" && s.name !== "Blocked",
+  );
   team.labels.nodes = [];
   return team;
 }
@@ -28,9 +30,10 @@ const mutations = (fake: ReturnType<typeof fakeLinear>) =>
   fake.calls.filter((c) => c.operationName !== "TeamMeta").map((c) => c.operationName);
 
 describe("ensureWorkspaceSetup from an empty team", () => {
-  test("creates the state, the label, the group, and three children in order", async () => {
+  test("creates the states, the label, the group, and three children in order", async () => {
     const { fake, result } = await runSetup(emptyTeam());
     expect(mutations(fake)).toEqual([
+      "CreateState",
       "CreateState",
       "CreateLabel",
       "CreateLabel",
@@ -44,6 +47,7 @@ describe("ensureWorkspaceSetup from an empty team", () => {
       name: "Needs Verification",
       created: true,
     });
+    expect(result.blocked).toEqual({ id: "state-new", name: "Blocked", created: true });
     expect(result.agentFiled.created).toBe(true);
     expect(result.marshallGroup).toEqual({
       id: "label-new-marshall",
@@ -53,15 +57,24 @@ describe("ensureWorkspaceSetup from an empty team", () => {
     expect(result.agents.map((a) => a.created)).toEqual([true, true, true]);
   });
 
-  test("sends the state input the plan specifies", async () => {
+  test("sends the state inputs the plan specifies, Blocked right after Needs Verification", async () => {
     const { fake } = await runSetup(emptyTeam());
-    const state = fake.callsFor("CreateState")[0]?.variables as { input: Record<string, unknown> };
-    expect(state.input).toEqual({
+    const inputs = fake
+      .callsFor("CreateState")
+      .map((c) => (c.variables as { input: Record<string, unknown> }).input);
+    expect(inputs[0]).toEqual({
       teamId: IDS.team,
       name: "Needs Verification",
       type: "started",
       color: "#f2c94c",
       position: 2.5,
+    });
+    expect(inputs[1]).toEqual({
+      teamId: IDS.team,
+      name: "Blocked",
+      type: "started",
+      color: "#eb5757",
+      position: 2.75,
     });
   });
 
@@ -91,6 +104,7 @@ describe("ensureWorkspaceSetup on an existing team", () => {
       name: "Needs Verification",
       created: false,
     });
+    expect(result.blocked).toEqual({ id: IDS.blocked, name: "Blocked", created: false });
     expect(result.agentFiled.id).toBe(IDS.agentFiled);
     expect(result.marshallGroup.id).toBe(IDS.marshall);
     expect(result.agents.map((a) => a.id)).toEqual([IDS.agent0, IDS.agent1, IDS.agent2]);

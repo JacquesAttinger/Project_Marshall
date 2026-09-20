@@ -1,6 +1,6 @@
 # Linear setup for Marshall
 
-<!-- Last edited: 2026-09-19 23:25 CDT -->
+<!-- Last edited: 2026-09-20 15:15 CDT -->
 
 **TLDR:** Marshall talks to the ChessBuddy Linear workspace with a personal API key.
 One command creates the state and labels the loop needs.
@@ -34,6 +34,7 @@ Reads the team once, then creates only what is missing:
 | Kind | Name | Type / parent | Purpose |
 |---|---|---|---|
 | Workflow state | `Needs Verification` | type `started`, color `#f2c94c`, positioned after In Progress | The agent is done; a human checks the PR |
+| Workflow state | `Blocked` | type `started`, color `#eb5757`, positioned after Needs Verification | Marshall gave up: too many bounces (step 07) or an agent failure (step 08). Move it back to Todo to restart it |
 | Label | `agent-filed` | team label | Follow-up issues Marshall files (spec §6.5) |
 | Label group | `marshall` | `isGroup: true` | Holds one child per agent slot |
 | Label | `marshall/agent-0`, `agent-1`, `agent-2` | children of `marshall` | The claim lock (see below) |
@@ -62,7 +63,7 @@ Linear's `delegate` field only accepts agent users (the OAuth agent from iterati
 - `claim(issueId, agentId)`: read the issue; give up if it is not `unstarted` or any agent label is on it; one `issueUpdate` (state, add ours, remove the other agent labels); read again; return `true` only if the state is In Progress and our label is the only agent label.
 - `release(issueId)`: state `Todo`, every agent label removed, optional comment.
 - Pickable = state type `unstarted`, assignee me, in the ChessBuddy team.
-  Needs Verification, Done, and Canceled are never pickable.
+  Needs Verification, Blocked, Done, and Canceled are never pickable.
 
 ### Comment footer
 

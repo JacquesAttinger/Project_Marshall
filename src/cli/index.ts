@@ -12,7 +12,7 @@ Commands:
   status [--json]     Print config, state dir, schema version, and row counts
   db migrate          Create the state dir and apply pending migrations
   linear setup [--json]
-                      Create the Needs Verification state and the marshall labels (idempotent)
+                      Create the Needs Verification and Blocked states and the marshall labels
   plan <identifier> --cwd <worktree> [--revise] [--json]
                       Run the planning phase on one issue in an existing worktree
   plan check <file> [--json]
