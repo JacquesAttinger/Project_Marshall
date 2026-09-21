@@ -1,7 +1,8 @@
-// Last edited: 2026-09-21 00:15 CDT
+// Last edited: 2026-09-21 14:40 CDT
 // The hand-off phase as the master agent runs it: one `runHandoffPhase` call (step 06), then
-// Needs Verification, the follow-ups from implement.json (filed in batch, once per title), the
-// claim parked in `awaiting_human` (which frees the slot), and the `finished` event.
+// Needs Verification, the follow-ups from implement.json (filed in batch, once per title, only
+// when `fileFollowUps` is on), the claim parked in `awaiting_human` (which frees the slot), and
+// the `finished` event.
 
 import type { HandoffPhaseInput, HandoffPhaseResult } from "../handoff/index.ts";
 import { readImplementStatus } from "../implement/status.ts";
@@ -56,7 +57,11 @@ function filedTitles(agent: MasterAgent): Set<string> {
   return titles;
 }
 
-/** Batch-file the follow-ups after the package is posted. One failure never stops the rest. */
+/**
+ * Batch-file the follow-ups after the package is posted. One failure never stops the rest.
+ * With `fileFollowUps` off, nothing is filed: the proposals stay in implement.json and the
+ * hand-off package, and one log line carries the count.
+ */
 export async function fileFollowUps(agent: MasterAgent): Promise<number> {
   const { deps, issue } = agent;
   let status: ReturnType<typeof readImplementStatus> = null;
@@ -66,6 +71,13 @@ export async function fileFollowUps(agent: MasterAgent): Promise<number> {
     deps.log.warn("master.followups_unreadable", {
       issueId: issue.id,
       error: (err as Error).message,
+    });
+    return 0;
+  }
+  if (!deps.config.fileFollowUps) {
+    deps.log.info("master.followups_skipped", {
+      issueId: issue.id,
+      proposed: status?.followups?.length ?? 0,
     });
     return 0;
   }

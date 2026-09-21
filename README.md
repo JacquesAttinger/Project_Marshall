@@ -89,7 +89,7 @@ A start that fails after Linear said yes parks the issue in `Blocked` with the r
 ## Master agent
 
 `src/master-agent.ts` supplies the hooks the loop takes (step 08): one `MasterAgent` per claim, plus a `pulse` the loop runs before every tick.
-The driver runs `runPlanPhase` → `/marshall:implement` → `runHandoffPhase`, moves the issue to Needs Verification, files the follow-ups, and parks the claim in `awaiting_human`, which frees the slot while the worktree stays for rebases and bounces.
+The driver runs `runPlanPhase` → `/marshall:implement` → `runHandoffPhase`, moves the issue to Needs Verification, files the follow-ups (only with `fileFollowUps: true`; off by default), and parks the claim in `awaiting_human`, which frees the slot while the worktree stays for rebases and bounces.
 The pulse enforces the 2-hour clock, kills and resumes a stalled run (two resumes, then one fresh restart from the plan commit, then Blocked), wakes a rate-limited agent when the pause ends, and, for every parked PR, polls for a merge: when one lands, the others are rebased one at a time, re-posted with a `rebased after <PR>` badge when green, or handed to `/marshall:resolve-conflicts` in a free slot on a conflict or red CI.
 Every state is on the claims row, so `bin/marshall run` after a crash reconciles and continues from where each issue was.
 See [`docs/state_machine.md`](docs/state_machine.md) for the diagram, the events, and where each limit lives.

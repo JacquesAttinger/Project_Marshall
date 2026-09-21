@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 12:35 CDT
+// Last edited: 2026-09-21 14:40 CDT
 // Typed loaders for marshall.config.json (committed, JSONC: `//` and `/* */` comments allowed)
 // and process.env (from .env).
 
@@ -59,6 +59,12 @@ export const ConfigSchema = z
     handoffMinutes: positiveInt.default(10),
     /** Pause after a rate limit whose reset time could not be parsed; the probe fires after it. */
     rateLimitProbeMinutes: positiveInt.default(30),
+    /**
+     * File the implementer's "out of scope found" items as Linear issues at hand-off. Off: the
+     * titles still appear in the hand-off package under "Follow-ups proposed", nothing is filed.
+     * Off by default since the dry run (2026-09-21): 24 follow-ups from six one-line issues.
+     */
+    fileFollowUps: z.boolean().default(false),
     models: ModelsSchema.default({ classifier: "haiku", planSimple: "opus", planComplex: "fable" }),
     /**
      * Host ports the target repo's Compose file reads from env, keyed by the env var name

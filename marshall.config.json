@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 12:50 CDT
+// Last edited: 2026-09-21 14:40 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
@@ -41,6 +41,9 @@
   "handoffMinutes": 10,
   // After a rate limit with no readable reset time: wait this long, then probe again.
   "rateLimitProbeMinutes": 30,
+  // File the implementer's "out of scope found" items as Linear issues at hand-off. Off: they
+  // are only listed in the hand-off package. Off since the dry run flooded the backlog.
+  "fileFollowUps": false,
 
   // --- Which Claude model runs which phase (values go straight to `--model`) ---
   "models": {
