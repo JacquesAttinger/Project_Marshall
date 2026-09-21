@@ -1,6 +1,6 @@
 # Master agent — state machine
 
-<!-- Last edited: 2026-09-21 03:00 CDT -->
+<!-- Last edited: 2026-09-21 01:50 CDT -->
 
 **TLDR:** One `MasterAgent` per claimed issue runs plan → implement → hand-off and then parks the claim while a human looks at the PR.
 Every state is a value of `claims.state`, so a restart of the orchestrator rebuilds each agent from its row.
@@ -57,7 +57,8 @@ The phase a claim is in comes from `phaseFor(claim)`: the state itself when it i
 ## The pulse
 
 `startLoop` calls `hooks.pulse()` before every tick, paused or not (`src/scheduler/index.ts`).
-For each live agent, in this order:
+First the kill flags: a `kill:<issueId>` row in `flags` (written by `marshall kill`) whose agent is waiting on a run or a rate-limit pause is executed like the clock, with `killed` as the interrupt, and the phase lands in `blocked` with `why: killed`; a flag whose agent sits between runs waits for the next pulse; one with no agent is cleared.
+Then, for each live agent, in this order:
 
 1. **Clock.** `claimedAt + issueTimeoutHours` has passed → kill the run, settle its wait with `over_budget`, the phase ends in `blocked` with the event `over_budget`.
 2. **Rate-limit wake.** The agent is waiting in `rate_limited` and `pause_until` has passed → the pause flag is cleared, the state goes back to the phase, `rate_limit_resumed` is written, and the phase probes by continuing the same session. A second rate limit pauses again without spending a resume.
@@ -115,7 +116,7 @@ Step 09 maps `finished`, `blocked`, `over_budget`, `crashed`, `rate_limited`, `r
 
 ## Running it
 
-`bin/marshall run` reconciles, then loops: pulse, tick, sleep `pollSeconds`.
-`bin/marshall run --once` does one reconcile, one pulse, and one tick, prints the decisions, and exits.
+`bin/marshall run` rotates the logs, writes the pidfile, reconciles, then loops: pulse, tick, sleep `pollSeconds`; the ntfy tailer ticks every 10 s beside it.
+`bin/marshall run --once` does one reconcile, one pulse, one tick, and one notify tick, prints the decisions, and exits.
 Ctrl-C stops the loop; live agent jobs keep running under the Claude daemon, and the next start's reconcile attaches to them.
-launchd, notifications, and `marshall status` for agents are step 09; the first real run on ChessBuddy is step 10.
+launchd, the pushes, and the control commands are in [`runbook.md`](runbook.md); the first real run on ChessBuddy is step 10.
