@@ -12,6 +12,7 @@ import { runPlanningPhase } from "../phases/plan.ts";
 import { latestRunNamed, type Run, type Terminal } from "../runner/index.ts";
 import {
   bumpFreshRestarts,
+  CLAIMED,
   type Claim,
   type ClaimPatch,
   getClaim,
@@ -37,14 +38,15 @@ import {
 export type Phase = typeof PLANNING | typeof IMPLEMENTING | typeof HANDOFF;
 
 /**
- * The lifecycle phase a claim is in, from its state or, for a parked state such as
- * `rate_limited`, from what it has produced so far: no plan → planning, no PR → implementing.
+ * The lifecycle phase a claim is in: from its state, or for a row the scheduler just handed over
+ * (`claimed`, fresh or bounce) planning, or for a parked state such as `rate_limited` from what
+ * this lifecycle has produced so far: no plan → planning, no PR → implementing.
  */
 export function phaseFor(claim: Claim): Phase {
   if (claim.state === PLANNING || claim.state === IMPLEMENTING || claim.state === HANDOFF) {
     return claim.state;
   }
-  if (!claim.planPath) return PLANNING;
+  if (claim.state === CLAIMED || !claim.planPath) return PLANNING;
   if (!claim.prUrl) return IMPLEMENTING;
   return HANDOFF;
 }

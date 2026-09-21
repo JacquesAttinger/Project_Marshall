@@ -127,13 +127,18 @@ export interface FinishClaimInput {
   bounce: boolean;
 }
 
-/** The claim is real: Linear says In Progress with our label and the worktree exists. */
+/**
+ * The claim is real: Linear says In Progress with our label and the worktree exists. A bounce
+ * starts a new lifecycle: the resume and fresh-restart budgets reset, and the PR URL is cleared
+ * until the implement phase reads it back from implement.json (the plan path and model stay).
+ */
 export function finishClaim(db: Database, issueId: string, input: FinishClaimInput, now: string) {
   const bounce = input.bounce ? 1 : 0;
   db.run(
     `UPDATE claims SET state = ?, identifier = ?, branch = ?, worktree_path = ?,
        bounces = bounces + ?, resumes = CASE WHEN ? THEN 0 ELSE resumes END,
-       fresh_restarts = CASE WHEN ? THEN 0 ELSE fresh_restarts END, rebase_after = NULL,
+       fresh_restarts = CASE WHEN ? THEN 0 ELSE fresh_restarts END,
+       pr_url = CASE WHEN ? THEN NULL ELSE pr_url END, rebase_after = NULL,
        updated_at = ?
      WHERE issue_id = ?`,
     [
@@ -141,6 +146,7 @@ export function finishClaim(db: Database, issueId: string, input: FinishClaimInp
       input.identifier,
       input.branch,
       input.worktreePath,
+      bounce,
       bounce,
       bounce,
       bounce,
