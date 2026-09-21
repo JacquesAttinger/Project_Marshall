@@ -1,7 +1,7 @@
-// Last edited: 2026-09-20 15:15 CDT
-// Idempotent workspace setup: the Needs Verification and Blocked states, the agent-filed label, and
-// the marshall label group with one child per agent slot. Reads team metadata once, creates only
-// what is missing.
+// Last edited: 2026-09-21 15:10 CDT
+// Idempotent workspace setup: the Needs Verification and Blocked states, the agent-filed and
+// human-only labels, and the marshall label group with one child per agent slot. Reads team
+// metadata once, creates only what is missing.
 
 import type { Logger } from "../log.ts";
 import { run } from "./client.ts";
@@ -10,6 +10,7 @@ import {
   AGENT_FILED_LABEL,
   AGENT_IDS,
   BLOCKED_STATE,
+  HUMAN_ONLY_LABEL,
   IN_PROGRESS_STATE,
   MARSHALL_LABEL_GROUP,
   NEEDS_VERIFICATION_STATE,
@@ -29,6 +30,7 @@ export interface SetupResult {
   needsVerification: Ensured;
   blocked: Ensured;
   agentFiled: Ensured;
+  humanOnly: Ensured;
   marshallGroup: Ensured;
   agents: Ensured[];
 }
@@ -129,6 +131,7 @@ export async function ensureWorkspaceSetup(
     log,
   );
   const agentFiled = await ensureLabel(gql, teamId, labels, { name: AGENT_FILED_LABEL }, log);
+  const humanOnly = await ensureLabel(gql, teamId, labels, { name: HUMAN_ONLY_LABEL }, log);
   const marshallGroup = await ensureLabel(
     gql,
     teamId,
@@ -148,5 +151,5 @@ export async function ensureWorkspaceSetup(
       ),
     );
   }
-  return { needsVerification, blocked, agentFiled, marshallGroup, agents };
+  return { needsVerification, blocked, agentFiled, humanOnly, marshallGroup, agents };
 }

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:30 CDT
+// Last edited: 2026-09-21 15:10 CDT
 // A fake `fetch` that plays Linear. Routes by GraphQL operationName, records every call,
 // and sets the rate-limit headers on each response. Handlers return data, `graphqlErrors(...)`,
 // or `httpStatus(...)`.
@@ -33,6 +33,7 @@ export const IDS = {
   blocked: "state-blocked",
   done: "state-done",
   agentFiled: "label-agent-filed",
+  humanOnly: "label-human-only",
   marshall: "label-marshall",
   agent0: "label-agent-0",
   agent1: "label-agent-1",
@@ -69,6 +70,7 @@ export const fullTeamData = (): { team: TeamMeta } => ({
     labels: {
       nodes: [
         { id: IDS.agentFiled, name: "agent-filed", isGroup: false, parent: null },
+        { id: IDS.humanOnly, name: "human-only", isGroup: false, parent: null },
         { id: IDS.marshall, name: "marshall", isGroup: true, parent: null },
         {
           id: IDS.agent0,

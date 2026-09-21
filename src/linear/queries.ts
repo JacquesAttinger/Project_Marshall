@@ -1,8 +1,9 @@
-// Last edited: 2026-09-20 15:30 CDT
+// Last edited: 2026-09-21 15:10 CDT
 // One GraphQL document plus its Zod response schema per Linear operation Marshall uses.
 // Field names follow Linear's public schema. Keep documents minimal: every field costs complexity.
 
 import { z } from "zod";
+import { HUMAN_ONLY_LABEL } from "./map.ts";
 
 export interface Operation<T> {
   name: string;
@@ -120,6 +121,7 @@ query PickableIssues($teamId: ID!, $assigneeId: ID!) {
       team: { id: { eq: $teamId } }
       assignee: { id: { eq: $assigneeId } }
       state: { type: { eq: "unstarted" } }
+      labels: { every: { name: { neq: "${HUMAN_ONLY_LABEL}" } } }
     }
     first: 50
   ) {

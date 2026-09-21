@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 13:40 CDT
+// Last edited: 2026-09-21 15:10 CDT
 // Pure mappers from Linear's raw issue shape to Marshall's types. No fetch, so tests hit them directly.
 
 import type { RawIssue, RawIssueDetail } from "./queries.ts";
@@ -9,6 +9,8 @@ export type AgentId = (typeof AGENT_IDS)[number];
 /** Label group that holds one child label per agent slot: `marshall/agent-0` and so on. */
 export const MARSHALL_LABEL_GROUP = "marshall";
 export const AGENT_FILED_LABEL = "agent-filed";
+/** A human puts this label on an issue to keep Marshall from ever picking it up. */
+export const HUMAN_ONLY_LABEL = "human-only";
 export const NEEDS_VERIFICATION_STATE = "Needs Verification";
 export const IN_PROGRESS_STATE = "In Progress";
 export const TODO_STATE = "Todo";
@@ -81,6 +83,10 @@ export function agentLabelIdsOn(labels: RawLabel[]): string[] {
 
 export function agentLabelOf(labels: RawLabel[]): AgentId | null {
   return agentLabelsOf(labels)[0] ?? null;
+}
+
+export function isHumanOnly(labels: string[]): boolean {
+  return labels.includes(HUMAN_ONLY_LABEL);
 }
 
 export function isFromMarshall(body: string): boolean {

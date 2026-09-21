@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-21 15:10 CDT
 
 import { describe, expect, test } from "bun:test";
 import { createGql } from "../../src/linear/gql.ts";
@@ -30,11 +30,12 @@ const mutations = (fake: ReturnType<typeof fakeLinear>) =>
   fake.calls.filter((c) => c.operationName !== "TeamMeta").map((c) => c.operationName);
 
 describe("ensureWorkspaceSetup from an empty team", () => {
-  test("creates the states, the label, the group, and three children in order", async () => {
+  test("creates the states, the labels, the group, and three children in order", async () => {
     const { fake, result } = await runSetup(emptyTeam());
     expect(mutations(fake)).toEqual([
       "CreateState",
       "CreateState",
+      "CreateLabel",
       "CreateLabel",
       "CreateLabel",
       "CreateLabel",
@@ -49,6 +50,7 @@ describe("ensureWorkspaceSetup from an empty team", () => {
     });
     expect(result.blocked).toEqual({ id: "state-new", name: "Blocked", created: true });
     expect(result.agentFiled.created).toBe(true);
+    expect(result.humanOnly.created).toBe(true);
     expect(result.marshallGroup).toEqual({
       id: "label-new-marshall",
       name: "marshall",
@@ -84,9 +86,10 @@ describe("ensureWorkspaceSetup from an empty team", () => {
       .callsFor("CreateLabel")
       .map((c) => (c.variables as { input: unknown }).input);
     expect(labelInputs[0]).toEqual({ teamId: IDS.team, name: "agent-filed" });
-    expect(labelInputs[1]).toEqual({ teamId: IDS.team, name: "marshall", isGroup: true });
+    expect(labelInputs[1]).toEqual({ teamId: IDS.team, name: "human-only" });
+    expect(labelInputs[2]).toEqual({ teamId: IDS.team, name: "marshall", isGroup: true });
     for (const [i, slot] of ["agent-0", "agent-1", "agent-2"].entries()) {
-      expect(labelInputs[2 + i]).toEqual({
+      expect(labelInputs[3 + i]).toEqual({
         teamId: IDS.team,
         name: slot,
         parentId: "label-new-marshall",
@@ -106,6 +109,7 @@ describe("ensureWorkspaceSetup on an existing team", () => {
     });
     expect(result.blocked).toEqual({ id: IDS.blocked, name: "Blocked", created: false });
     expect(result.agentFiled.id).toBe(IDS.agentFiled);
+    expect(result.humanOnly.id).toBe(IDS.humanOnly);
     expect(result.marshallGroup.id).toBe(IDS.marshall);
     expect(result.agents.map((a) => a.id)).toEqual([IDS.agent0, IDS.agent1, IDS.agent2]);
     expect(result.agents.every((a) => !a.created)).toBe(true);

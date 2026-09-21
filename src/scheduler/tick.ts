@@ -1,10 +1,10 @@
-// Last edited: 2026-09-20 23:40 CDT
+// Last edited: 2026-09-21 15:10 CDT
 // One pass of the scheduler: order the pickable issues and start what the caps allow. Each start
 // writes a `claiming` row before it touches Linear, so a crash in the middle leaves a row reconcile
 // can repair instead of an issue that is In Progress and invisible.
 
 import { capCheck, isPaused } from "../caps.ts";
-import { BLOCKED_STATE, type PickableIssue } from "../linear/index.ts";
+import { BLOCKED_STATE, isHumanOnly, type PickableIssue } from "../linear/index.ts";
 import {
   abandonClaim,
   beginClaim,
@@ -159,6 +159,12 @@ async function startIssue(
 /** Decide one issue. Reads the row, applies the bounce rules and the caps, then starts. */
 export async function consider(deps: SchedulerDeps, issue: PickableIssue): Promise<TickDecision> {
   const { db, config, log } = deps;
+  // Belt and suspenders: the Linear query already excludes this label, but a claim in flight
+  // when the label lands should not turn into a start either.
+  if (isHumanOnly(issue.labels)) {
+    log.debug("scheduler.skip_human_only", { issueId: issue.id, identifier: issue.identifier });
+    return skipped(issue, false, "human_only");
+  }
   const existing = getClaim(db, issue.id);
   if (existing && isLive(existing)) {
     log.warn("scheduler.skip_live_claim", { issueId: issue.id, state: existing.state });

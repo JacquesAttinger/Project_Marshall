@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:10 CDT
+// Last edited: 2026-09-21 15:10 CDT
 // `marshall queue [--json]` — a dry run of one scheduler tick. Prints the ordered pickable list and,
 // for each issue, what the next tick would do with it and why. Reads Linear and the DB; writes nothing.
 
@@ -6,12 +6,17 @@ import type { Database } from "bun:sqlite";
 import { type CapCounts, countsAfterStart, evaluateCaps, readCapCounts } from "../caps.ts";
 import { type Config, loadConfig, loadEnv, requireLinearApiKey } from "../config.ts";
 import { migrate, openDb } from "../db/index.ts";
-import { connectLinear, type LinearClient, type PickableIssue } from "../linear/index.ts";
+import {
+  connectLinear,
+  isHumanOnly,
+  type LinearClient,
+  type PickableIssue,
+} from "../linear/index.ts";
 import { createLogger } from "../log.ts";
 import { dbPath, ensureHome } from "../paths.ts";
 import { BLOCKED, getClaim, isLive, liveClaims, orderIssues } from "../scheduler/index.ts";
 
-export type QueueKind = "fresh" | "bounce" | "live" | "blocked";
+export type QueueKind = "fresh" | "bounce" | "live" | "blocked" | "human_only";
 
 export interface QueueRow {
   identifier: string;
@@ -87,6 +92,15 @@ function rowFor(issue: PickableIssue, db: Database, config: Config, counts: CapC
     createdAt: issue.createdAt,
     slot: null,
   };
+  if (isHumanOnly(issue.labels)) {
+    return {
+      ...base,
+      kind: "human_only",
+      bounces: 0,
+      wouldStart: false,
+      reasons: ["human-only label: Marshall never picks this up"],
+    };
+  }
   const existing = getClaim(db, issue.id);
   if (existing && isLive(existing)) {
     return {
