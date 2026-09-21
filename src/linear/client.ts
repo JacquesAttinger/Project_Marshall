@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:30 CDT
+// Last edited: 2026-09-21 13:40 CDT
 // The one module that talks to Linear. Every read or write Marshall makes goes through LinearClient.
 // Claim lock = state In Progress + one `marshall/agent-<slot>` label. `delegate` waits for the
 // iteration 2 OAuth agent, because the API only accepts agent users there.
@@ -10,6 +10,7 @@ import {
   AGENT_FILED_LABEL,
   AGENT_IDS,
   type AgentId,
+  agentLabelIdsOn,
   agentLabelName,
   agentLabelsOf,
   BLOCKED_STATE,
@@ -134,7 +135,6 @@ interface Ctx {
   log: Logger;
   stateId(name: string): string;
   labelId(name: string): string;
-  agentLabelIds: string[];
 }
 
 async function comment(ctx: Ctx, issueId: string, markdown: string): Promise<{ id: string }> {
@@ -160,14 +160,12 @@ async function claim(ctx: Ctx, issueId: string, agentId: AgentId): Promise<boole
     ctx.log.info("linear.claim_skipped", { issueId, agentId, state: before.state.name, holders });
     return false;
   }
+  // No `removedLabelIds`: the guard above proved no agent label is on the issue, and Linear
+  // rejects an id that is not on it ("Label not on issue").
   const ours = ctx.labelId(agentLabelName(agentId));
   await run(ctx.gql, UpdateIssue, {
     id: issueId,
-    input: {
-      stateId: ctx.stateId(IN_PROGRESS_STATE),
-      addedLabelIds: [ours],
-      removedLabelIds: ctx.agentLabelIds.filter((id) => id !== ours),
-    },
+    input: { stateId: ctx.stateId(IN_PROGRESS_STATE), addedLabelIds: [ours] },
   });
   const after = (await run(ctx.gql, IssueById, { id: issueId })).issue;
   const afterHolders = agentLabelsOf(after.labels.nodes);
@@ -182,9 +180,15 @@ async function claim(ctx: Ctx, issueId: string, agentId: AgentId): Promise<boole
 }
 
 async function release(ctx: Ctx, issueId: string, opts: { comment?: string } = {}): Promise<void> {
+  // Only the agent labels the issue has: Linear rejects an id that is not on it.
+  const before = (await run(ctx.gql, IssueById, { id: issueId })).issue;
+  const removedLabelIds = agentLabelIdsOn(before.labels.nodes);
   await run(ctx.gql, UpdateIssue, {
     id: issueId,
-    input: { stateId: ctx.stateId(TODO_STATE), removedLabelIds: ctx.agentLabelIds },
+    input: {
+      stateId: ctx.stateId(TODO_STATE),
+      ...(removedLabelIds.length > 0 ? { removedLabelIds } : {}),
+    },
   });
   ctx.log.info("linear.released", { issueId });
   if (opts.comment) await comment(ctx, issueId, opts.comment);
@@ -261,6 +265,5 @@ export async function connectLinear(opts: ConnectOptions): Promise<LinearClient>
     log: opts.log.child({ team: team.key }),
     stateId,
     labelId,
-    agentLabelIds: AGENT_IDS.map((a) => labelId(agentLabelName(a))),
   });
 }

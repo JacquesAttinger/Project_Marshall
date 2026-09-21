@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:30 CDT
+// Last edited: 2026-09-21 13:40 CDT
 
 import { describe, expect, test } from "bun:test";
 import { ConfigError } from "../../src/config.ts";
@@ -127,7 +127,7 @@ describe("listPickable", () => {
 });
 
 describe("claim", () => {
-  test("moves to In Progress, adds our label, removes the others, and confirms on re-read", async () => {
+  test("moves to In Progress, adds our label (removes none), and confirms on re-read", async () => {
     const { fake, client, lines } = await connect({
       IssueById: readsThen(
         rawDetail({ state: inProgress, labels: { nodes: [agentLabelNode(1)] } }),
@@ -137,11 +137,8 @@ describe("claim", () => {
     const update = fake.callsFor("UpdateIssue")[0];
     expect(update?.variables).toEqual({
       id: "issue-1",
-      input: {
-        stateId: IDS.inProgress,
-        addedLabelIds: [IDS.agent1],
-        removedLabelIds: [IDS.agent0, IDS.agent2],
-      },
+      // No removedLabelIds: Linear rejects an id that is not on the issue.
+      input: { stateId: IDS.inProgress, addedLabelIds: [IDS.agent1] },
     });
     expect(fake.calls.map((c) => c.operationName).slice(2)).toEqual([
       "IssueById",
@@ -198,21 +195,37 @@ describe("claim refusals", () => {
 });
 
 describe("release", () => {
-  test("moves to Todo and removes every agent label", async () => {
+  test("moves to Todo and removes only the agent labels the issue has", async () => {
+    const { fake, client } = await connect({
+      IssueById: () => ({
+        issue: rawDetail({
+          state: inProgress,
+          labels: { nodes: [agentLabelNode(1), { id: "l", name: "bug", parent: null }] },
+        }),
+      }),
+    });
+    await client.release("issue-1");
+    expect(fake.callsFor("UpdateIssue")[0]?.variables).toEqual({
+      id: "issue-1",
+      input: { stateId: IDS.todo, removedLabelIds: [IDS.agent1] },
+    });
+    expect(fake.callsFor("CreateComment")).toHaveLength(0);
+  });
+
+  test("sends no removedLabelIds when the issue holds no agent label", async () => {
     const { fake, client } = await connect();
     await client.release("issue-1");
     expect(fake.callsFor("UpdateIssue")[0]?.variables).toEqual({
       id: "issue-1",
-      input: { stateId: IDS.todo, removedLabelIds: [IDS.agent0, IDS.agent1, IDS.agent2] },
+      input: { stateId: IDS.todo },
     });
-    expect(fake.callsFor("CreateComment")).toHaveLength(0);
   });
 
   test("posts the optional comment after the update", async () => {
     const { fake, client } = await connect();
     await client.release("issue-1", { comment: "Agent died; back to Todo." });
     const ops = fake.calls.map((c) => c.operationName).slice(2);
-    expect(ops).toEqual(["UpdateIssue", "CreateComment"]);
+    expect(ops).toEqual(["IssueById", "UpdateIssue", "CreateComment"]);
     expect(fake.callsFor("CreateComment")[0]?.variables).toEqual({
       input: { issueId: "issue-1", body: `Agent died; back to Todo.${MARSHALL_COMMENT_FOOTER}` },
     });

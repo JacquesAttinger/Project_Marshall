@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-21 13:40 CDT
 // Pure mappers from Linear's raw issue shape to Marshall's types. No fetch, so tests hit them directly.
 
 import type { RawIssue, RawIssueDetail } from "./queries.ts";
@@ -67,6 +67,16 @@ export function agentLabelsOf(labels: RawLabel[]): AgentId[] {
   return labels
     .filter((l) => l.parent?.name === MARSHALL_LABEL_GROUP && isAgentId(l.name))
     .map((l) => l.name as AgentId);
+}
+
+/**
+ * Ids of the agent slot labels on the issue, for `removedLabelIds`. Linear rejects the whole
+ * update with "Label not on issue" when an id in that list is not on the issue.
+ */
+export function agentLabelIdsOn(labels: RawLabel[]): string[] {
+  return labels
+    .filter((l) => l.parent?.name === MARSHALL_LABEL_GROUP && isAgentId(l.name))
+    .map((l) => l.id);
 }
 
 export function agentLabelOf(labels: RawLabel[]): AgentId | null {
