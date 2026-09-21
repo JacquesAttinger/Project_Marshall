@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 12:35 CDT
+// Last edited: 2026-09-21 14:55 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -42,7 +42,7 @@ describe("parseConfig", () => {
     expect(config.windowStartCap).toBe(2);
     expect(config.windowHours).toBe(5);
     expect(config.pollSeconds).toBe(45);
-    expect(config.stallMinutes).toBe(5);
+    expect(config.stallMinutes).toBe(15);
     expect(config.issueTimeoutHours).toBe(2);
     expect(config.maxFixCycles).toBe(4);
     expect(config.maxBounces).toBe(3);

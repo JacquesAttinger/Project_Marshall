@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 14:40 CDT
+// Last edited: 2026-09-21 14:55 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
@@ -25,8 +25,10 @@
   "pollSeconds": 45,
 
   // --- When to give up ---
-  // An agent with no activity for this many minutes counts as stalled and is resumed.
-  "stallMinutes": 5,
+  // An agent with no activity for this many minutes counts as stalled and is resumed. Activity is
+  // a transcript write or a hook event, and a single long gate command (pytest, pnpm build, a CI
+  // watch) writes neither while it runs, so this must exceed the longest such command.
+  "stallMinutes": 15,
   // Total wall clock one issue may take, from claim to hand-off. A bounce restarts it.
   "issueTimeoutHours": 3,
   // Code -> review -> fix rounds the implementer may run before it gives up (Blocked).

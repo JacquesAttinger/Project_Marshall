@@ -1,6 +1,6 @@
 # Master agent — state machine
 
-<!-- Last edited: 2026-09-21 01:50 CDT -->
+<!-- Last edited: 2026-09-21 14:55 CDT -->
 
 **TLDR:** One `MasterAgent` per claimed issue runs plan → implement → hand-off and then parks the claim while a human looks at the PR.
 Every state is a value of `claims.state`, so a restart of the orchestrator rebuilds each agent from its row.
@@ -100,7 +100,7 @@ Step 09 maps `finished`, `blocked`, `over_budget`, `crashed`, `rate_limited`, `r
 | Limit | Value | Enforced in |
 |---|---|---|
 | Issue clock | `issueTimeoutHours` (2) from `claimed_at`; a bounce restarts it | `MasterAgent.checkClock`, and before every launch |
-| Stall | `stallMinutes` (5) with no transcript or hook activity | `MasterAgent.checkStall` → `runner.isStalled` |
+| Stall | `stallMinutes` (15) with no transcript or hook activity | `MasterAgent.checkStall` → `runner.isStalled` |
 | Resumes | `maxResumes` (2) per lifecycle, shared with reconcile's boot resumes | `claims.resumes`, `src/phases/implement.ts` |
 | Fresh restart | one per lifecycle, and only with 20 minutes or more left | `claims.fresh_restarts`, `MasterAgent.canFreshRestart` |
 | Fix cycles | `maxFixCycles` (4) | inside `/marshall:implement`; this step only reads `implement.json` |
