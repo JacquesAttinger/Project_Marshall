@@ -1,6 +1,6 @@
 # Step 08 — Master Agent State Machine
 
-<!-- Last edited: 2026-09-20 17:35 CDT -->
+<!-- Last edited: 2026-09-20 22:30 CDT -->
 
 **TLDR:** The brain for one issue.
 It runs plan → implement → review → hand-off, watches the clock, restarts a stuck agent, and knows when to give up and call me.
@@ -75,9 +75,13 @@ Written to the `events` table; step 09 maps them to pushes.
 
 ## Open questions for grilling
 
-1. One process per master agent, or one orchestrator process holding N state machines? One process is simpler and survives fine because the Claude daemon owns the jobs.
-2. On rate-limit resume: wait for a fixed delay from config, or probe by relaunching and reading the error again?
-3. Should the fresh restart after 2 resumes also reset the 2-hour clock, or keep the original deadline?
-4. Where do follow-ups get filed: at the end of the issue (batch) or as soon as `followups.json` changes?
-5. Does a bounce re-run the review loop before hand-off? The spec says yes (done gate), but it costs a cycle.
-6. Rebasing: rebase every other open Marshall PR at once, or one per tick to keep the caps honest? A resolver run counts as a start.
+Answered on 2026-09-20; the plan is `../step_08_master_agent_plan.md`.
+
+1. ~~One process per master agent, or one orchestrator process holding N state machines?~~ One orchestrator process, dictated by `startLoop` + `MasterAgentHooks`.
+2. ~~On rate-limit resume: wait for a fixed delay from config, or probe?~~ Parse "Resets at <time>" from `error_details` and pause until then; on a parse failure pause `rateLimitProbeMinutes` (30). On expiry, resume the rate-limited job as the probe; a second rate-limit failure re-pauses without spending a resume.
+3. ~~Should the fresh restart after 2 resumes also reset the 2-hour clock?~~ No. The original deadline stands; with fewer than 20 minutes left the fresh start is skipped and the issue goes straight to Blocked.
+4. ~~Where do follow-ups get filed?~~ In batch after the hand-off is posted, so the package lists titles only.
+5. ~~Does a bounce re-run the review loop before hand-off?~~ Yes, the full done gate every time; the implement skill enforces it.
+6. ~~Rebasing: every other open PR at once, or one per tick?~~ One stale PR per tick, oldest first. The inline `git rebase` + push takes no slot; a resolver run takes a concurrency slot (re-acquired through `lowestFreeSlot`) but not a daily or window start.
+
+Also settled: `awaiting_human` frees its slot (migration 004 recreates `claims_live_slot`), the row and worktree stay for rebases and bounces, and reconcile keeps parked and rate-limited claims without a liveness check.
