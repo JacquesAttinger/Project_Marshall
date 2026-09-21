@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-09-21 00:55 CDT
 // Every path Marshall writes to derives from one root: MARSHALL_HOME or ~/.marshall.
 // Paths under the Claude daemon's home (CLAUDE_CONFIG_DIR or ~/.claude) are read-only for us.
 
@@ -29,6 +29,16 @@ export function logDir(): string {
 
 export function logPath(): string {
   return join(logDir(), "marshall.log");
+}
+
+/** The two files launchd writes the daemon's stdout and stderr to (see the plist template). */
+export function launchdLogPaths(): { out: string; err: string } {
+  return { out: join(logDir(), "launchd.out.log"), err: join(logDir(), "launchd.err.log") };
+}
+
+/** `<MARSHALL_HOME>/marshall.pid`: the live orchestrator's pid, written by `marshall run`. */
+export function pidPath(): string {
+  return join(marshallHome(), "marshall.pid");
 }
 
 /** Hand-off packages the writer skill produces: `<ISSUE-ID>.md` plus a `<ISSUE-ID>.json` sidecar. */
