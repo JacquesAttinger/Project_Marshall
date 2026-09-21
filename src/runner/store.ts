@@ -68,6 +68,16 @@ export function getRunByJob(db: Database, jobId: string): Run | null {
   return row ? rowToRun(row) : null;
 }
 
+/** The newest run launched in `cwd` under `name`, whatever its state, or null. */
+export function latestRunNamed(db: Database, cwd: string, name: string): Run | null {
+  const row = db
+    .query<RunRow, [string, string]>(
+      "SELECT * FROM runs WHERE cwd = ? AND name = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+    )
+    .get(cwd, name);
+  return row ? rowToRun(row) : null;
+}
+
 /** Runs that may still produce events: anything not finished, failed, or killed. */
 export function listActiveRuns(db: Database): Run[] {
   return db

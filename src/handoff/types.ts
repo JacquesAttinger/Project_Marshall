@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:45 CDT
+// Last edited: 2026-09-20 23:35 CDT
 // Public shapes and constants for the hand-off phase. Step 08 builds a HandoffPhaseInput and
 // reads the result; the writer skill and the validator agree on the section names below.
 
@@ -71,6 +71,11 @@ export interface HandoffPhaseInput {
   model?: string;
   /** Ref the branch was cut from. Default `origin/<config.baseBranch>`. */
   base?: string;
+  /**
+   * A writer run that is already going (the orchestrator restarted mid-phase): skip the launch
+   * and wait on this run. The worktree snapshot is taken now instead of before the launch.
+   */
+  attachRunId?: string;
   waiter?: RunWaiter;
   onLaunched?: (run: Run) => void;
   gh?: GhRunner;

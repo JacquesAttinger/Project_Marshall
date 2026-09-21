@@ -14,6 +14,7 @@ interface ClaimRow {
   worktree_path: string | null;
   bounces: number;
   resumes: number;
+  identifier: string | null;
   fresh_restarts: number;
   plan_path: string | null;
   model: string | null;
@@ -33,6 +34,7 @@ function rowToClaim(r: ClaimRow): Claim {
     worktreePath: r.worktree_path,
     bounces: r.bounces,
     resumes: r.resumes,
+    identifier: r.identifier,
     freshRestarts: r.fresh_restarts,
     planPath: r.plan_path,
     model: r.model,
@@ -118,6 +120,7 @@ export function abandonClaim(db: Database, issueId: string, previous: Claim | nu
 }
 
 export interface FinishClaimInput {
+  identifier: string;
   branch: string;
   worktreePath: string;
   /** A bounce restart: count it and reset the resume budget for the new lifecycle. */
@@ -128,12 +131,22 @@ export interface FinishClaimInput {
 export function finishClaim(db: Database, issueId: string, input: FinishClaimInput, now: string) {
   const bounce = input.bounce ? 1 : 0;
   db.run(
-    `UPDATE claims SET state = ?, branch = ?, worktree_path = ?,
+    `UPDATE claims SET state = ?, identifier = ?, branch = ?, worktree_path = ?,
        bounces = bounces + ?, resumes = CASE WHEN ? THEN 0 ELSE resumes END,
        fresh_restarts = CASE WHEN ? THEN 0 ELSE fresh_restarts END, rebase_after = NULL,
        updated_at = ?
      WHERE issue_id = ?`,
-    [CLAIMED, input.branch, input.worktreePath, bounce, bounce, bounce, now, issueId],
+    [
+      CLAIMED,
+      input.identifier,
+      input.branch,
+      input.worktreePath,
+      bounce,
+      bounce,
+      bounce,
+      now,
+      issueId,
+    ],
   );
   return getClaim(db, issueId) as Claim;
 }

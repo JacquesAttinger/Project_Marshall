@@ -46,6 +46,8 @@ export interface Claim {
   bounces: number;
   /** Resumes of a dead or stalled agent within this claim. `maxResumes` releases the issue. */
   resumes: number;
+  /** The human key (`CB-12`) that names the issue's files. Null on rows older than migration 004. */
+  identifier: string | null;
   /** Fresh restarts of a phase after the resumes ran out. One is allowed. */
   freshRestarts: number;
   /** The plan file relative to the worktree, once the planner has committed it. */

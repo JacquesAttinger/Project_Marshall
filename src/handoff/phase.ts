@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:40 CDT
+// Last edited: 2026-09-20 23:35 CDT
 // The hand-off phase: read implement.json → snapshot the worktree → launch `/marshall:handoff` →
 // wait → prove the worktree did not change → validate the file → resume once with the problems
 // if it is invalid → post. Mirrors src/plan/phase.ts; step 08 makes one call, runHandoffPhase.
@@ -144,7 +144,11 @@ async function resumeOnce(ctx: Ctx, before: Snapshot, problems: string[]): Promi
 
 /** Resolve the PR facts, the round, and the model. A failure here happens before any launch. */
 function prepare(input: WriteInput): Ctx | Failure {
-  const base = { runId: mintRunId(`${input.issue.identifier} handoff`), issue: input.issue };
+  const runId = input.attachRunId ?? mintRunId(`${input.issue.identifier} handoff`);
+  const base = { runId, issue: input.issue };
+  if (input.attachRunId && !getRun(input.db, input.attachRunId)) {
+    return fail(base, "launch_failed", `attachRunId ${input.attachRunId} is unknown`);
+  }
   let status: ReturnType<typeof readImplementStatus>;
   try {
     status = readImplementStatus(input.issue.identifier);
@@ -184,13 +188,18 @@ async function writeWith(ctx: Ctx): Promise<WriteOutcome> {
     return fail(ctx, "worktree_dirty", `before launch: ${before.dirty.join(", ")}`);
   }
   let run: Run;
-  try {
-    const prompt = `/marshall:handoff ${ctx.planPath} ${ctx.issue.identifier}`;
-    run = await launch(ctx.db, { runId: ctx.runId, ...launchOpts(ctx, prompt) });
-  } catch (err) {
-    return fail(ctx, "launch_failed", (err as Error).message);
+  if (ctx.attachRunId) {
+    run = getRun(ctx.db, ctx.attachRunId) as Run;
+    log.info("handoff.attached", { issue: ctx.issue.identifier, runId: ctx.runId });
+  } else {
+    try {
+      const prompt = `/marshall:handoff ${ctx.planPath} ${ctx.issue.identifier}`;
+      run = await launch(ctx.db, { runId: ctx.runId, ...launchOpts(ctx, prompt) });
+    } catch (err) {
+      return fail(ctx, "launch_failed", (err as Error).message);
+    }
+    ctx.onLaunched?.(run);
   }
-  ctx.onLaunched?.(run);
   const failed = await awaitRun(ctx, run, ctx.deadline - Date.now());
   if (failed) return failed;
   const problems = await inspect(ctx, before);

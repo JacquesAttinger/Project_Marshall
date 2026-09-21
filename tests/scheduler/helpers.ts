@@ -127,8 +127,8 @@ export function seedClaim(
 ): void {
   db.run(
     `INSERT INTO claims (issue_id, agent_id, slot, state, branch, worktree_path, bounces, resumes,
-       fresh_restarts, plan_path, model, pr_url, rebase_after, claimed_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       identifier, fresh_restarts, plan_path, model, pr_url, rebase_after, claimed_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.issueId,
       row.agentId ?? `agent-${row.slot}`,
@@ -138,6 +138,7 @@ export function seedClaim(
       row.worktreePath ?? null,
       row.bounces ?? 0,
       row.resumes ?? 0,
+      row.identifier ?? null,
       row.freshRestarts ?? 0,
       row.planPath ?? null,
       row.model ?? null,

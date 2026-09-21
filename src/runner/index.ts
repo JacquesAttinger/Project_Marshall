@@ -26,7 +26,14 @@ export {
   status,
   transcriptMtime,
 } from "./status.ts";
-export { getRun, getRunByJob, isTerminal, lastStopFailure, listActiveRuns } from "./store.ts";
+export {
+  getRun,
+  getRunByJob,
+  isTerminal,
+  lastStopFailure,
+  latestRunNamed,
+  listActiveRuns,
+} from "./store.ts";
 export type {
   Effort,
   HookEvent,

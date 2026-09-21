@@ -25,6 +25,8 @@ export const ModelsSchema = z
     planComplex: modelName.default("fable"),
     /** The hand-off writer. Falls back to `planSimple`; see `handoffModel()`. */
     handoff: modelName.optional(),
+    /** The implementer and the conflict resolver. Falls back to `opus`; see `implementModel()`. */
+    implement: modelName.optional(),
   })
   .strict();
 
@@ -75,6 +77,11 @@ export type Config = Readonly<z.infer<typeof ConfigSchema>>;
  */
 export function handoffModel(config: Config): string {
   return config.models.handoff ?? config.models.planSimple;
+}
+
+/** The model for `/marshall:implement` and `/marshall:resolve-conflicts`: spec 6.1 says Opus. */
+export function implementModel(config: Config): string {
+  return config.models.implement ?? "opus";
 }
 
 export const EnvSchema = z.object({

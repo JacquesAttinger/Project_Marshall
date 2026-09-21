@@ -45,6 +45,12 @@ export interface PlanPhaseInput {
   planPath?: string;
   /** Skip the classifier and plan with this model (revise mode reuses the stored one). */
   model?: string;
+  /**
+   * A planner run that is already going (the orchestrator restarted mid-phase): skip the
+   * classifier, the brief, and the launch; wait on this run and verify its output. `model` is
+   * then required, and `planPath` and `revision` must be given in revise mode.
+   */
+  attachRunId?: string;
   waiter?: RunWaiter;
   onLaunched?: (run: Run) => void;
 }

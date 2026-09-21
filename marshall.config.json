@@ -20,7 +20,8 @@
     "classifier": "haiku",
     "planSimple": "opus",
     "planComplex": "fable",
-    "handoff": "opus"
+    "handoff": "opus",
+    "implement": "opus"
   },
   "services": {
     "POSTGRES_HOST_PORT": 5432,
