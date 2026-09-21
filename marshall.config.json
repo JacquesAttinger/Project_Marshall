@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 12:45 CDT
+// Last edited: 2026-09-21 12:50 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
@@ -18,9 +18,9 @@
   // New issue starts allowed per calendar day.
   "dailyStartCap": 10,
   // New issue starts allowed inside any rolling window of `windowHours` hours.
-  "windowStartCap": 2,
+  "windowStartCap": 10,
   // Length of that rolling window, in hours.
-  "windowHours": 5,
+  "windowHours": 3,
   // How often the daemon polls Linear and checks on its agents, in seconds.
   "pollSeconds": 45,
 
