@@ -1,6 +1,6 @@
 # Step 09 — Ops: launchd, Notifications, CLI
 
-<!-- Last edited: 2026-09-19 21:15 CDT -->
+<!-- Last edited: 2026-09-21 01:50 CDT -->
 
 **TLDR:** Make Marshall start on its own, stay awake, tell my phone when something needs me, and give me a terminal view until the web dashboard exists.
 
@@ -69,10 +69,13 @@ Sections 7, 8.1 (Kill), 9, 10.1 of `project_marshall_plan.md`.
 - `marshall status` output matches `claude agents` for the running jobs.
 - `marshall kill <issue>` stops the job, marks the claim Blocked, and pushes `blocked`.
 
-## Open questions for grilling
+## Decisions (grilling, 2026-09-20)
 
-1. Public ntfy.sh with a hard-to-guess topic prefix, or self-host later? Public is fine for issue titles; decide if hand-off text should ever go in a push.
-2. Should `finished` pushes include the hand-off TLDR line, or only the title and link?
-3. `caffeinate` inside the plist, or a separate always-on agent so it survives a Marshall restart?
-4. Should `marshall pause` also stop running agents, or only stop new starts?
-5. Do you want a daily digest push (issues finished, blocked, tokens used), or nothing beyond the event pushes?
+1. Public ntfy.sh with a hard-to-guess `NTFY_TOPIC_PREFIX`. Hand-off text never goes in a push.
+2. `finished` pushes carry the identifier, the title, and the Linear link only. No TLDR line.
+3. `caffeinate -i` wraps the daemon inside the plist (`exec caffeinate -i bun bin/marshall run`). No separate agent.
+4. `marshall pause` stops new starts only; running agents finish. `marshall kill <ID>` is the per-issue stop.
+5. No daily digest.
+
+Settled by the implementer: the notifier tails the `events` table with a persisted cursor (no calls from `emit()`); the manual pause is its own flag (`paused`) so a rate-limit resume never clears it; `kill` goes through a flag the daemon's pulse executes, and acts directly only when no orchestrator is alive (pidfile); `claims.title` (migration 005) gives pushes and `status` the issue title without a Linear round trip.
+Built: see [`../runbook.md`](../runbook.md) and [`../step_09_ops_plan.md`](../step_09_ops_plan.md).

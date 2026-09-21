@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Marshall LaunchAgent. Rendered by scripts/install-launchd.sh; {{BUN}}, {{REPO}}, {{HOME}} are
+     filled in there. Same layout as ~/Library/LaunchAgents/com.jacques.branch-janitor.plist.
+     caffeinate -i wraps the daemon so the laptop never idle-sleeps while Marshall runs (spec 10.1).
+     caffeinate execs bun in place and forks a child that holds the sleep assertion, so the pid
+     launchd tracks is bun's own: SIGTERM from bootout reaches the daemon directly, and the
+     assertion goes away with it.
+     KeepAlive restarts a crashed daemon; RunAtLoad starts it at login and after a reboot.
+     WorkingDirectory is the repo so Bun finds .env for the Linear key and the ntfy prefix.
+     Last edited: 2026-09-21 02:05 CDT -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jacques.marshall</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>exec /usr/bin/caffeinate -i {{BUN}} {{REPO}}/bin/marshall run</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{{REPO}}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MARSHALL_QUIET</key>
+    <string>1</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{HOME}}/.marshall/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{HOME}}/.marshall/logs/launchd.err.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

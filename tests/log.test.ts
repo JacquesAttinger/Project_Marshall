@@ -1,8 +1,9 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-09-21 00:05 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { createLogger } from "../src/log.ts";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { createLogger, rotateLog } from "../src/log.ts";
 import { logPath } from "../src/paths.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
 
@@ -62,5 +63,28 @@ describe("createLogger", () => {
     log.warn("c");
     log.error("d");
     expect(lines().map((l) => l.level)).toEqual(["debug", "info", "warn", "error"]);
+  });
+});
+
+describe("rotateLog", () => {
+  test("a small or missing file is left alone", () => {
+    const path = join(home.dir, "small.log");
+    expect(rotateLog(path, 100, 3)).toBe(false);
+    writeFileSync(path, "x".repeat(100));
+    expect(rotateLog(path, 100, 3)).toBe(false);
+    expect(readFileSync(path, "utf8")).toHaveLength(100);
+  });
+
+  test("an oversized file shifts down the chain and the oldest beyond keep is dropped", () => {
+    const path = join(home.dir, "big.log");
+    for (const gen of ["one", "two", "three", "four"]) {
+      writeFileSync(path, gen.repeat(50));
+      expect(rotateLog(path, 100, 3)).toBe(true);
+      expect(existsSync(path)).toBe(false);
+    }
+    expect(readFileSync(`${path}.1`, "utf8").startsWith("four")).toBe(true);
+    expect(readFileSync(`${path}.2`, "utf8").startsWith("three")).toBe(true);
+    expect(readFileSync(`${path}.3`, "utf8").startsWith("two")).toBe(true);
+    expect(existsSync(`${path}.4`)).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:00 CDT
+// Last edited: 2026-09-21 00:10 CDT
 // `marshall queue [--json]` — a dry run of one scheduler tick. Prints the ordered pickable list and,
 // for each issue, what the next tick would do with it and why. Reads Linear and the DB; writes nothing.
 
@@ -29,6 +29,7 @@ export interface QueueRow {
 export interface QueueReport {
   now: string;
   pausedUntil: string | null;
+  pausedAt: string | null;
   counts: CapCounts;
   caps: Pick<Config, "maxAgents" | "dailyStartCap" | "windowStartCap" | "windowHours">;
   rows: QueueRow[];
@@ -61,6 +62,7 @@ export async function collectQueue(deps: QueueDeps): Promise<QueueReport> {
   return {
     now: now.toISOString(),
     pausedUntil: initial.pausedUntil,
+    pausedAt: initial.pausedAt,
     counts: initial,
     caps: {
       maxAgents: config.maxAgents,
@@ -141,6 +143,9 @@ export function formatQueue(report: QueueReport): string {
   const frees = counts.windowFreesAt ? ` (next window slot at ${counts.windowFreesAt})` : "";
   const head = [
     `Now ${report.now}`,
+    ...(report.pausedAt
+      ? [`PAUSED by \`marshall pause\` at ${report.pausedAt} (marshall resume)`]
+      : []),
     ...(report.pausedUntil ? [`PAUSED until ${report.pausedUntil}`] : []),
     `Agents ${counts.live}/${caps.maxAgents} busy · starts today ${counts.today}/${caps.dailyStartCap} · ${window}${frees}`,
     "",

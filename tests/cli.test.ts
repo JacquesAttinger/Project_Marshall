@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:40 CDT
+// Last edited: 2026-09-20 23:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -90,7 +90,7 @@ describe("dispatch", () => {
     expect(await dispatch([])).toBe(2);
   });
 
-  test("db migrate creates the DB and status reports version 4", async () => {
+  test("db migrate creates the DB and status reports version 5", async () => {
     const before = collectStatus();
     expect(before.dbExists).toBe(false);
     expect(before.schemaVersion).toBe(0);
@@ -100,7 +100,7 @@ describe("dispatch", () => {
 
     const after = collectStatus();
     expect(after.dbExists).toBe(true);
-    expect(after.schemaVersion).toBe(4);
+    expect(after.schemaVersion).toBe(5);
     expect(after.counts).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
     expect(after.marshallHome).toBe(home.dir);
   });

@@ -1,7 +1,10 @@
-// Last edited: 2026-09-20 15:35 CDT
-// The three start caps (concurrency, calendar day, rolling window) and the pause flag. Pure over
-// the DB and an injected clock, so tests pin `now`. `readCapCounts` + `evaluateCaps` are split so
-// `marshall queue` can simulate a tick by bumping the counts it would have produced.
+// Last edited: 2026-09-21 00:10 CDT
+// The three start caps (concurrency, calendar day, rolling window) and the two pause flags. Pure
+// over the DB and an injected clock, so tests pin `now`. `readCapCounts` + `evaluateCaps` are split
+// so `marshall queue` can simulate a tick by bumping the counts it would have produced.
+//
+// Two pauses, two keys: `pause_until` is the rate-limit pause the master agent sets and clears;
+// `paused` is `marshall pause`, cleared only by `marshall resume`. Either one stops new starts.
 
 import type { Database } from "bun:sqlite";
 import type { Config } from "./config.ts";
@@ -16,6 +19,8 @@ import {
 export { liveClaims } from "./scheduler/store.ts";
 
 export const PAUSE_FLAG = "pause_until";
+/** Set by `marshall pause`; the value is the ISO time it was set. Running agents finish. */
+export const MANUAL_PAUSE_FLAG = "paused";
 
 export interface CapCounts {
   /** Claims holding a slot. */
@@ -26,8 +31,10 @@ export interface CapCounts {
   window: number;
   /** When the oldest start in the window leaves it, as ISO, or null when the window is empty. */
   windowFreesAt: string | null;
-  /** The pause flag, when it is still in the future. */
+  /** The rate-limit pause flag, when it is still in the future. */
   pausedUntil: string | null;
+  /** When `marshall pause` was run, or null. */
+  pausedAt: string | null;
 }
 
 export interface CapCheck {
@@ -77,9 +84,25 @@ export function setPause(db: Database, until: Date | null): void {
   setFlag(db, PAUSE_FLAG, until ? until.toISOString() : null);
 }
 
-export function isPaused(db: Database, now: Date): boolean {
+/** The time `marshall pause` was run, or null when not manually paused. */
+export function manualPauseAt(db: Database): string | null {
+  return getFlag(db, MANUAL_PAUSE_FLAG);
+}
+
+/** `marshall pause` / `marshall resume`. Independent of the rate-limit pause. */
+export function setManualPause(db: Database, now: Date | null): void {
+  setFlag(db, MANUAL_PAUSE_FLAG, now ? now.toISOString() : null);
+}
+
+/** The rate-limit pause alone. A parked agent waits on this one, never on `marshall pause`. */
+export function isRateLimitPaused(db: Database, now: Date): boolean {
   const until = pauseUntil(db);
   return until !== null && now.getTime() < until.getTime();
+}
+
+/** Either pause holds: no new starts. The rate-limit pause expires; the manual one does not. */
+export function isPaused(db: Database, now: Date): boolean {
+  return manualPauseAt(db) !== null || isRateLimitPaused(db, now);
 }
 
 export function readCapCounts(db: Database, config: Config, now: Date): CapCounts {
@@ -94,12 +117,14 @@ export function readCapCounts(db: Database, config: Config, now: Date): CapCount
       ? new Date(Date.parse(oldest) + config.windowHours * 3_600_000).toISOString()
       : null,
     pausedUntil: until && now.getTime() < until.getTime() ? until.toISOString() : null,
+    pausedAt: manualPauseAt(db),
   };
 }
 
 /** Apply the rules to a snapshot. Pure. */
 export function evaluateCaps(counts: CapCounts, config: Config, opts: CapOptions): CapCheck {
   const reasons: string[] = [];
+  if (counts.pausedAt) reasons.push(`paused by \`marshall pause\` at ${counts.pausedAt}`);
   if (counts.pausedUntil) reasons.push(`paused until ${counts.pausedUntil}`);
   if (counts.live >= config.maxAgents) {
     reasons.push(`concurrency: ${counts.live} of ${config.maxAgents} agents busy`);

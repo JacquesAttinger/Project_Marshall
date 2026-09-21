@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:05 CDT
+// Last edited: 2026-09-21 00:20 CDT
 // The implement + review phase: launch `/marshall:implement`, wait for its Stop, and read the
 // outcome from implement.json. This is where the spec's limits live: a stall (killed by the
 // pulse) resumes the session up to `maxResumes`, then one fresh restart from the plan commit;
@@ -114,14 +114,25 @@ async function finished(agent: MasterAgent): Promise<boolean | "retry"> {
 async function afterFailure(agent: MasterAgent, run: Run, terminal: Terminal): Promise<Run | null> {
   const error = terminal.kind === "failed" ? terminal.error : "no_outcome";
   const details = terminal.kind === "failed" ? terminal.details : undefined;
+  if (agent.killed()) return null;
   if (error === "rate_limit") {
     await agent.pauseForRateLimit(details);
-    if (agent.cutByClock()) return null;
+    if (agent.cutByClock() || agent.killed()) return null;
     // The probe: continue the same session; a second rate limit re-pauses without a resume.
     return continueRun(agent, run);
   }
   if (error === OVER_BUDGET) return null;
   return recover(agent, run, error === STALLED ? STALLED : error);
+}
+
+/** No run to continue: Blocked for the reason the wait ended (kill, clock, or exhaustion). */
+async function giveUp(agent: MasterAgent): Promise<void> {
+  if (agent.killed()) return agent.blockKilled();
+  if (agent.cutByClock() || agent.overBudget()) return agent.blockOverBudget();
+  await agent.block(
+    "exhausted",
+    `The implement phase stalled or crashed ${agent.claim.resumes} times and a fresh restart was not possible.`,
+  );
 }
 
 /** True when the PR is green and stored on the claim; false when the issue is blocked. */
@@ -145,13 +156,7 @@ export async function runImplementPhase(
     }
     const next = await afterFailure(agent, run, terminal);
     if (!next) {
-      if (agent.cutByClock() || agent.overBudget()) await agent.blockOverBudget();
-      else if (!agent.done) {
-        await agent.block(
-          "exhausted",
-          `The implement phase stalled or crashed ${agent.claim.resumes} times and a fresh restart was not possible.`,
-        );
-      }
+      if (!agent.done) await giveUp(agent);
       return false;
     }
     run = next;

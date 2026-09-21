@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:50 CDT
+// Last edited: 2026-09-21 00:20 CDT
 // Public surface of the master agent (step 08). `createMasterAgentHooks` is what `startLoop`
 // takes in place of `defaultHooks`; `defaultMasterDeps` wires the real runner, git, gh, and the
 // step 04 / 06 phases. Tests build a MasterDeps with fakes instead.
@@ -27,6 +27,10 @@ export {
   type GitOps,
   HANDOFF,
   IMPLEMENTING,
+  type Interrupt,
+  KILL_FLAG_PREFIX,
+  KILLED,
+  killFlag,
   MASTER_EVENTS,
   type MasterDeps,
   type MasterEvent,

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:40 CDT
+// Last edited: 2026-09-20 23:40 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -90,23 +90,24 @@ describe("migrate", () => {
     expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
-  test("creates the five tables and sets user_version = 4", () => {
+  test("creates the five tables and sets user_version = 5", () => {
     const applied = migrate(db);
     expect(applied.map((m) => m.name)).toEqual([
       "001_init.sql",
       "002_runs.sql",
       "003_flags.sql",
       "004_master.sql",
+      "005_claim_title.sql",
     ]);
     expect(tables(db)).toEqual(["claims", "events", "flags", "runs", "starts"]);
-    expect(schemaVersion(db)).toBe(4);
+    expect(schemaVersion(db)).toBe(5);
     expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
   test("second migrate applies nothing", () => {
     migrate(db);
     expect(migrate(db)).toHaveLength(0);
-    expect(schemaVersion(db)).toBe(4);
+    expect(schemaVersion(db)).toBe(5);
   });
 
   test("listMigrations is sorted by number", () => {

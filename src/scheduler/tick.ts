@@ -136,7 +136,7 @@ async function startIssue(
   const claim = finishClaim(
     db,
     issue.id,
-    { identifier: issue.identifier, branch, worktreePath, bounce },
+    { identifier: issue.identifier, title: issue.title, branch, worktreePath, bounce },
     now,
   );
   if (!bounce) insertStart(db, issue.id, now);

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:50 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // Scheduler test setup: in-memory DB, fake Linear, fake worktrees, recording hooks, fake clock.
 
 import type { Database } from "bun:sqlite";
@@ -127,8 +127,9 @@ export function seedClaim(
 ): void {
   db.run(
     `INSERT INTO claims (issue_id, agent_id, slot, state, branch, worktree_path, bounces, resumes,
-       identifier, fresh_restarts, plan_path, model, pr_url, rebase_after, claimed_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       identifier, fresh_restarts, plan_path, model, pr_url, rebase_after, title, claimed_at,
+       updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.issueId,
       row.agentId ?? `agent-${row.slot}`,
@@ -144,6 +145,7 @@ export function seedClaim(
       row.model ?? null,
       row.prUrl ?? null,
       row.rebaseAfter ?? null,
+      row.title ?? null,
       row.claimedAt ?? NOW.toISOString(),
       row.updatedAt ?? NOW.toISOString(),
     ],

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:45 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // Public surface of the scheduler. Step 08 plugs its master agent in through `MasterAgentHooks`
 // and calls `startLoop`; `marshall queue` uses `tick`'s building blocks for a dry run.
 
@@ -16,6 +16,7 @@ export {
   type ClaimPatch,
   claimsInStates,
   getClaim,
+  getClaimByIdentifier,
   insertEvent,
   isLive,
   liveClaims,

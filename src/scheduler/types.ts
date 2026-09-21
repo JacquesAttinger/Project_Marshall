@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:45 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // Shapes shared by the scheduler, the caps, and step 08. A Claim is one row of the `claims` table.
 
 import type { Database } from "bun:sqlite";
@@ -58,6 +58,8 @@ export interface Claim {
   prUrl: string | null;
   /** The sibling PR whose merge queued a rebase, until that rebase lands. */
   rebaseAfter: string | null;
+  /** The issue title at claim time. Null on rows older than migration 005. */
+  title: string | null;
   claimedAt: string;
   updatedAt: string;
 }
