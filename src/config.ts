@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 14:40 CDT
+// Last edited: 2026-09-21 14:55 CDT
 // Typed loaders for marshall.config.json (committed, JSONC: `//` and `/* */` comments allowed)
 // and process.env (from .env).
 
@@ -48,7 +48,7 @@ export const ConfigSchema = z
     windowStartCap: positiveInt.default(2),
     windowHours: z.number().int().min(1).max(24).default(5),
     pollSeconds: z.number().int().min(10).max(600).default(45),
-    stallMinutes: positiveInt.default(5),
+    stallMinutes: positiveInt.default(15),
     issueTimeoutHours: positiveInt.default(2),
     maxFixCycles: positiveInt.default(4),
     maxBounces: positiveInt.default(3),

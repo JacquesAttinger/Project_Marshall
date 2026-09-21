@@ -1,6 +1,6 @@
 # Project Marshall — Planning Spec (v3)
 
-<!-- Last edited: 2026-09-20 12:22 CDT -->
+<!-- Last edited: 2026-09-21 14:55 CDT -->
 
 ## TLDR
 
@@ -106,7 +106,7 @@ A bounced issue resumes its existing branch and plan; it does not start over.
 
 `Unclaimed → Claimed → Planning → Implementing → Reviewing → PR Open → Awaiting Human → Released`
 
-Failure paths: `Blocked` (agent gave up), `Stalled` (no tool call for 5 minutes), `Over Budget`, `Rate Limited`.
+Failure paths: `Blocked` (agent gave up), `Stalled` (no tool call for 15 minutes), `Over Budget`, `Rate Limited`.
 `Blocked` and `Over Budget` push a notification.
 `Rate Limited` pauses the whole queue and pushes once.
 
@@ -174,7 +174,7 @@ The done gate is the single most important part of this spec.
 ### 6.6 Limits and recovery
 
 - Wall clock: **2 hours** per issue for planning plus implementation. Then stop and notify.
-- Stall: no tool call for 5 minutes → `Stalled`.
+- Stall: no tool call for 15 minutes → `Stalled`.
 - Resume: a stalled or interrupted agent resumes its session, branch, and plan. Up to 2 resumes.
 - After 2 resumes: discard the branch, start fresh once. If that fails too, mark `Blocked` and notify.
 - Reconcile on boot: compare the claims table with Linear. Release any claim with no live agent process.
@@ -386,7 +386,7 @@ Every question from v1, with the answer.
 | 10 | Retry and time budget | 4 fix cycles. 2 hours wall clock per issue. |
 | 11 | Shared services | Per-agent Docker Compose project name and port offset. |
 | 12 | Cap scope and overlap | Global cap. Worktrees always. No overlap check; rebase after merge, resolver agent on conflict (revised 2026-09-20). |
-| 13 | Orphaned claims | 5-minute stall check + reconcile on boot. Resume up to 2 times, then one fresh start, then Blocked. |
+| 13 | Orphaned claims | 15-minute stall check + reconcile on boot. Resume up to 2 times, then one fresh start, then Blocked. |
 | 14 | Permission boundary | Full permissions. Accepted risk; revisit before Hemut. |
 | 15 | Secrets | Real `.env`, copied as `ship-plan` does. Accepted risk; revisit before Hemut. |
 | 16 | Budget and rate limits | Stay on Max. Reactive pause on rate-limit errors. 6 starts/day. 2 starts per rolling 5-hour window. Marshall keeps running while I use the laptop. One push on pause, one on resume. |
