@@ -94,11 +94,15 @@ export function setManualPause(db: Database, now: Date | null): void {
   setFlag(db, MANUAL_PAUSE_FLAG, now ? now.toISOString() : null);
 }
 
-/** Either pause holds: no new starts. The rate-limit pause expires; the manual one does not. */
-export function isPaused(db: Database, now: Date): boolean {
-  if (manualPauseAt(db) !== null) return true;
+/** The rate-limit pause alone. A parked agent waits on this one, never on `marshall pause`. */
+export function isRateLimitPaused(db: Database, now: Date): boolean {
   const until = pauseUntil(db);
   return until !== null && now.getTime() < until.getTime();
+}
+
+/** Either pause holds: no new starts. The rate-limit pause expires; the manual one does not. */
+export function isPaused(db: Database, now: Date): boolean {
+  return manualPauseAt(db) !== null || isRateLimitPaused(db, now);
 }
 
 export function readCapCounts(db: Database, config: Config, now: Date): CapCounts {

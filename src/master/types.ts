@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:20 CDT
+// Last edited: 2026-09-21 00:20 CDT
 // Shapes for the master agent: the phase states it writes to `claims.state`, the events it
 // records, and the injectable seams (runner, git, gh, phases) so the state machine is tested
 // with fakes and a fake clock, never with a live agent.
@@ -47,6 +47,15 @@ export type MasterEvent = (typeof MASTER_EVENTS)[number];
 /** Why a phase's wait ended early: the pulse killed the run and settled the waiter with this. */
 export const STALLED = "stalled";
 export const OVER_BUDGET = "over_budget";
+/** `marshall kill <issue>`: the pulse found the kill flag, ended the run, and the issue is Blocked. */
+export const KILLED = "killed";
+export type Interrupt = typeof STALLED | typeof OVER_BUDGET | typeof KILLED;
+
+/** The flag `marshall kill` writes; the pulse executes it and clears it. */
+export function killFlag(issueId: string): string {
+  return `kill:${issueId}`;
+}
+export const KILL_FLAG_PREFIX = "kill:";
 
 /** Below this much issue clock, a fresh restart is skipped and the issue goes to Blocked. */
 export const FRESH_RESTART_MIN_MS = 20 * 60_000;

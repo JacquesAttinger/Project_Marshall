@@ -1,10 +1,11 @@
-// Last edited: 2026-09-21 03:15 CDT
+// Last edited: 2026-09-21 00:20 CDT
 // One MasterAgent per claim. The driver runs planning → implementing → handoff in order and ends
 // in exactly one terminal state (awaiting_human, or blocked with one event). The pulse (see
-// orchestrator.ts) pokes it from outside: the 2-hour clock, the stall check, the rate-limit wake.
+// orchestrator.ts) pokes it from outside: the 2-hour clock, the stall check, the rate-limit wake,
+// and `marshall kill`.
 // Everything durable is on the claims row, so a restart rebuilds the object from it.
 
-import { isPaused, setPause } from "../caps.ts";
+import { isRateLimitPaused, setPause } from "../caps.ts";
 import type { IssueDetail } from "../linear/index.ts";
 import { runHandoffPhase } from "../phases/handoff.ts";
 import { runImplementPhase } from "../phases/implement.ts";
@@ -28,6 +29,8 @@ import {
   FRESH_RESTART_MIN_MS,
   HANDOFF,
   IMPLEMENTING,
+  type Interrupt,
+  KILLED,
   type MasterDeps,
   type MasterEvent,
   OVER_BUDGET,
@@ -58,7 +61,7 @@ export class MasterAgent {
   /** The run the pulse watches for stalls and kills on the clock, while a phase waits on one. */
   runId: string | null = null;
   /** Set by the pulse before it settles the waiter, so the phase knows why its wait ended. */
-  interrupt: typeof STALLED | typeof OVER_BUDGET | null = null;
+  interrupt: Interrupt | null = null;
   /** True once the driver reached a terminal state. */
   done = false;
   /** Epoch ms when the issue clock runs out: `claimedAt + issueTimeoutHours`. */
@@ -163,7 +166,22 @@ export class MasterAgent {
     return true;
   }
 
-  private async interruptRun(why: typeof STALLED | typeof OVER_BUDGET): Promise<void> {
+  /**
+   * `marshall kill`: end whatever this agent waits on and let the phase land in Blocked. False
+   * when there is nothing to interrupt yet (between runs); the flag stays for the next pulse.
+   */
+  async kill(): Promise<boolean> {
+    if (this.done || (!this.runId && !this.wake)) return false;
+    await this.interruptRun(KILLED);
+    return true;
+  }
+
+  /** The pulse ended the last wait with `marshall kill`. */
+  killed(): boolean {
+    return this.interrupt === KILLED;
+  }
+
+  private async interruptRun(why: Interrupt): Promise<void> {
     this.interrupt = why;
     const runId = this.runId;
     if (runId) {
@@ -176,7 +194,7 @@ export class MasterAgent {
   /** Pulse: end the rate-limit wait once the pause flag has expired (or the clock ran out). */
   wakeIfPauseOver(now: Date): boolean {
     if (!this.wake) return false;
-    if (isPaused(this.deps.db, now) && !this.overBudget(now)) return false;
+    if (isRateLimitPaused(this.deps.db, now) && !this.overBudget(now)) return false;
     this.wake();
     return true;
   }
@@ -195,7 +213,7 @@ export class MasterAgent {
       this.wake = resolve;
     });
     this.wake = null;
-    if (this.cutByClock()) return;
+    if (this.cutByClock() || this.killed()) return;
     setPause(this.deps.db, null);
     this.transition(phase);
     this.emit("rate_limit_resumed", {});
@@ -206,12 +224,20 @@ export class MasterAgent {
    * then retry uncounted; else one fresh restart while the clock allows it; else blocked.
    */
   async decideRetry(reason: string, detail: string, details?: string): Promise<RetryVerdict> {
+    if (this.killed()) {
+      await this.blockKilled();
+      return "blocked";
+    }
     if (this.interrupt === OVER_BUDGET || this.overBudget()) {
       await this.blockOverBudget();
       return "blocked";
     }
     if (detail === "rate_limit" || reason === "rate_limit") {
       await this.pauseForRateLimit(details);
+      if (this.killed()) {
+        await this.blockKilled();
+        return "blocked";
+      }
       if (this.cutByClock()) {
         await this.blockOverBudget();
         return "blocked";
@@ -247,6 +273,14 @@ export class MasterAgent {
       OVER_BUDGET,
       `Marshall stopped this issue: the ${hours}-hour clock ran out in the ${phaseFor(this.claim)} phase.`,
       "over_budget",
+    );
+  }
+
+  /** `marshall kill` landed: Blocked with the `blocked` event, which is what the push tails. */
+  async blockKilled(): Promise<void> {
+    await this.block(
+      KILLED,
+      `Marshall stopped this issue on request (\`marshall kill\`) in the ${phaseFor(this.claim)} phase.`,
     );
   }
 

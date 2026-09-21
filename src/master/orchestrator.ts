@@ -1,14 +1,15 @@
-// Last edited: 2026-09-21 00:45 CDT
+// Last edited: 2026-09-21 00:20 CDT
 // The hooks the scheduler calls, over a map of live MasterAgents. `start` and `resume` build an
 // agent and let its driver run detached (a tick must not wait two hours). `attach` rebuilds one
-// after a restart. `pulse` runs before every tick: the clock, the rate-limit wake, the stall
-// check for each agent, then the DB-driven rebase machinery for the parked PRs.
+// after a restart. `pulse` runs before every tick: the kill flags, then the clock, the rate-limit
+// wake, the stall check for each agent, then the DB-driven rebase machinery for the parked PRs.
 
 import type { IssueDetail, PickableIssue } from "../linear/index.ts";
 import { pulseRebases } from "../phases/rebase.ts";
 import { AWAITING_HUMAN, type Claim, type MasterAgentHooks, REBASING } from "../scheduler/index.ts";
+import { setFlag } from "../scheduler/store.ts";
 import { MasterAgent } from "./agent.ts";
-import { type Entry, type MasterDeps, RESOLVING } from "./types.ts";
+import { type Entry, KILL_FLAG_PREFIX, killFlag, type MasterDeps, RESOLVING } from "./types.ts";
 
 /** Parked states the pulse handles from the claims table; no agent object is built for them. */
 const PULSE_OWNED_STATES: readonly string[] = [AWAITING_HUMAN, REBASING, RESOLVING];
@@ -19,6 +20,36 @@ export interface Orchestrator extends MasterAgentHooks {
   attach(claim: Claim): Promise<void>;
   /** Resolves once every live driver has reached a terminal state (tests and shutdown). */
   settled(): Promise<void>;
+}
+
+/**
+ * Execute `marshall kill` flags. One with a live agent that has something to interrupt is run and
+ * cleared; one whose agent sits between runs waits for the next pulse; one with no agent at all
+ * is cleared with a log line (the CLI handles the no-daemon case itself).
+ */
+async function pulseKills(deps: MasterDeps, agents: Map<string, MasterAgent>): Promise<void> {
+  const rows = deps.db
+    .query<{ key: string }, [string]>("SELECT key FROM flags WHERE key LIKE ? || '%'")
+    .all(KILL_FLAG_PREFIX);
+  for (const { key } of rows) {
+    const issueId = key.slice(KILL_FLAG_PREFIX.length);
+    const agent = agents.get(issueId);
+    if (!agent || agent.done) {
+      deps.log.warn("master.kill_no_agent", { issueId });
+      setFlag(deps.db, key, null);
+      continue;
+    }
+    try {
+      if (await agent.kill()) {
+        deps.log.info("master.killed", { issueId, state: agent.claim.state });
+        setFlag(deps.db, killFlag(issueId), null);
+      } else {
+        deps.log.info("master.kill_deferred", { issueId, state: agent.claim.state });
+      }
+    } catch (err) {
+      deps.log.error("master.kill_error", { issueId, error: (err as Error).message });
+    }
+  }
 }
 
 export function createOrchestrator(deps: MasterDeps): Orchestrator {
@@ -67,6 +98,7 @@ export function createOrchestrator(deps: MasterDeps): Orchestrator {
     },
     async pulse() {
       const now = deps.now();
+      await pulseKills(deps, agents);
       for (const agent of [...agents.values()]) {
         if (agent.done) continue;
         try {
