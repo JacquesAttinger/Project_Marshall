@@ -1,6 +1,6 @@
 # Marshall runbook
 
-<!-- Last edited: 2026-09-21 01:50 CDT -->
+<!-- Last edited: 2026-09-21 02:05 CDT -->
 
 **TLDR:** Marshall runs as a launchd agent on the desk laptop.
 `scripts/install-launchd.sh` installs it, `marshall status` shows what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
@@ -21,6 +21,7 @@ marshall status                 # Daemon: launchd running (pid N), orchestrator 
 
 The script renders `scripts/launchd/com.jacques.marshall.plist.template` with this machine's `bun`, the repo path, and `$HOME`, writes `~/Library/LaunchAgents/com.jacques.marshall.plist`, and bootstraps it.
 The plist runs `caffeinate -i bun bin/marshall run` with the repo as the working directory (so Bun loads `.env`), `KeepAlive` (a crash restarts it after 30 s), and `RunAtLoad` (login and reboot start it).
+`caffeinate` execs `bun` in place and forks a child that holds the sleep assertion, so the pid launchd shows is the daemon's own (`pmset -g assertions` lists the child).
 Rerun the script after moving the repo or changing the template; it boots the old agent out first.
 
 `marshall` on `PATH`: `bun link` in the repo, or call `bun bin/marshall ...`.

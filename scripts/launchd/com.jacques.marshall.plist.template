@@ -2,11 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Marshall LaunchAgent. Rendered by scripts/install-launchd.sh; {{BUN}}, {{REPO}}, {{HOME}} are
      filled in there. Same layout as ~/Library/LaunchAgents/com.jacques.branch-janitor.plist.
-     caffeinate -i wraps the daemon so the laptop never idle-sleeps while Marshall runs (spec 10.1);
-     `exec` keeps caffeinate as the process launchd tracks, and caffeinate exits with its child.
+     caffeinate -i wraps the daemon so the laptop never idle-sleeps while Marshall runs (spec 10.1).
+     caffeinate execs bun in place and forks a child that holds the sleep assertion, so the pid
+     launchd tracks is bun's own: SIGTERM from bootout reaches the daemon directly, and the
+     assertion goes away with it.
      KeepAlive restarts a crashed daemon; RunAtLoad starts it at login and after a reboot.
      WorkingDirectory is the repo so Bun finds .env for the Linear key and the ntfy prefix.
-     Last edited: 2026-09-21 00:40 CDT -->
+     Last edited: 2026-09-21 02:05 CDT -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
