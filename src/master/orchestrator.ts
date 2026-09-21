@@ -25,29 +25,38 @@ export function createOrchestrator(deps: MasterDeps): Orchestrator {
   const agents = new Map<string, MasterAgent>();
   const drivers = new Map<string, Promise<void>>();
 
-  async function issueFor(claim: Claim, issue?: PickableIssue): Promise<IssueDetail> {
-    const detail = await deps.linear.getIssue(claim.issueId);
-    return issue ? { ...detail, ...issue, labels: detail.labels } : detail;
-  }
-
-  async function spawn(claim: Claim, entry: Entry, issue?: PickableIssue): Promise<void> {
+  /**
+   * Build the agent and let its driver run detached. The issue is re-read from Linear so a
+   * bounce sees the human's latest comment. `drive` never throws; the catch is a last guard so
+   * a lost agent can never surface as an unhandled rejection.
+   */
+  async function spawn(claim: Claim, entry: Entry): Promise<void> {
     if (agents.has(claim.issueId)) {
       deps.log.warn("master.already_running", { issueId: claim.issueId, entry: entry.kind });
       return;
     }
-    const agent = new MasterAgent(deps, claim, await issueFor(claim, issue));
+    const issue: IssueDetail = await deps.linear.getIssue(claim.issueId);
+    const agent = new MasterAgent(deps, claim, issue);
     agents.set(claim.issueId, agent);
-    const driver = agent.drive(entry).finally(() => {
-      agents.delete(claim.issueId);
-      drivers.delete(claim.issueId);
-    });
+    const driver = agent
+      .drive(entry)
+      .catch((err) => {
+        deps.log.error("master.driver_error", {
+          issueId: claim.issueId,
+          error: (err as Error).message,
+        });
+      })
+      .finally(() => {
+        agents.delete(claim.issueId);
+        drivers.delete(claim.issueId);
+      });
     drivers.set(claim.issueId, driver);
   }
 
   return {
     agents,
-    async start(claim, issue) {
-      await spawn(claim, { kind: "start" }, issue);
+    async start(claim, _issue: PickableIssue) {
+      await spawn(claim, { kind: "start" });
     },
     async resume(claim) {
       await spawn(claim, { kind: "resume" });

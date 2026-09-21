@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:50 CDT
+// Last edited: 2026-09-21 03:15 CDT
 // One MasterAgent per claim. The driver runs planning → implementing → handoff in order and ends
 // in exactly one terminal state (awaiting_human, or blocked with one event). The pulse (see
 // orchestrator.ts) pokes it from outside: the 2-hour clock, the stall check, the rate-limit wake.
@@ -269,7 +269,13 @@ export class MasterAgent {
     return false;
   }
 
-  /** Run the phases from wherever the claim is. Every path ends with `done` set. */
+  /** A phase launched (or re-launched) a run: the pulse watches it from now on. */
+  watch(runId: string): void {
+    this.runId = runId;
+    this.interrupt = null;
+  }
+
+  /** Run the phases from wherever the claim is. Every path ends with `done` set. Never throws. */
   async drive(entry: Entry): Promise<void> {
     try {
       let phase = phaseFor(this.claim);
@@ -286,16 +292,28 @@ export class MasterAgent {
       }
       await runHandoffPhase(this, how);
     } catch (err) {
-      const message = (err as Error).message ?? String(err);
-      this.deps.log.error("master.crashed", { issueId: this.claim.issueId, error: message });
-      if (this.runId) await this.deps.runner.kill(this.deps.db, this.runId).catch(() => {});
+      await this.crashed(err);
+    } finally {
+      this.done = true;
+    }
+  }
+
+  /** The driver threw: one `crashed` event, Blocked. A second failure here is only logged. */
+  private async crashed(err: unknown): Promise<void> {
+    const message = (err as Error).message ?? String(err);
+    this.deps.log.error("master.crashed", { issueId: this.claim.issueId, error: message });
+    try {
+      if (this.runId) await this.deps.runner.kill(this.deps.db, this.runId);
       await this.block(
         "crashed",
         `Marshall crashed while driving this issue: ${message}.`,
         "crashed",
       );
-    } finally {
-      this.done = true;
+    } catch (again) {
+      this.deps.log.error("master.crashed_unrecovered", {
+        issueId: this.claim.issueId,
+        error: (again as Error).message,
+      });
     }
   }
 }

@@ -222,6 +222,32 @@ describe("bounce", () => {
   });
 });
 
+describe("a crash inside the driver", () => {
+  test("ends in Blocked with one crashed event; a failing block is only logged", async () => {
+    h = makeMasterHarness();
+    h.phases.plan = async () => {
+      throw new Error("planner exploded");
+    };
+    const issue = registerIssue(h, "CB-1");
+    await h.hooks.start(claimFor(h, issue), issue);
+    await h.hooks.settled();
+    expect(getClaim(h.db, issue.id)?.state).toBe("blocked");
+    expect(h.linear.comments.at(-1)?.body).toContain("planner exploded");
+    expect(masterEvents(h.db).filter((e) => e !== "phase_changed")).toEqual(["crashed"]);
+
+    const other = registerIssue(h, "CB-2");
+    h.linear.setState = async () => {
+      throw new Error("linear down");
+    };
+    await h.hooks.start(claimFor(h, other, 1), other);
+    await h.hooks.settled();
+    expect(h.lines.find((l) => l.event === "master.crashed_unrecovered")?.fields.error).toBe(
+      "linear down",
+    );
+    expect(h.hooks.agents.size).toBe(0);
+  });
+});
+
 describe("restart of the orchestrator", () => {
   test("attach mid-implementing continues from the row without a second job", async () => {
     h = makeMasterHarness();
@@ -255,7 +281,9 @@ describe("restart of the orchestrator", () => {
     expect(getClaim(h.db, issue.id)?.state).toBe("awaiting_human");
     expect(h.runner.launches).toHaveLength(1);
   });
+});
 
+describe("restart of the orchestrator: resume and planning", () => {
   test("resume (reconcile found the job dead) continues the session, no extra count", async () => {
     h = makeMasterHarness();
     const { issue, implementRun } = await startThroughPlanning();
@@ -271,6 +299,21 @@ describe("restart of the orchestrator", () => {
     );
     expect(getClaim(h.db, issue.id)?.resumes).toBe(1);
     expect(eventPayloads(h.db, "resumed")[0]).toMatchObject({ how: "boot" });
+  });
+
+  test("resume with a run that finished while the orchestrator was down reads its outcome", async () => {
+    h = makeMasterHarness();
+    const { issue, implementRun } = await startThroughPlanning();
+    h.hooks.agents.clear();
+    writeStatus("CB-1");
+    h.waiter.finish(implementRun, { kind: "finished" });
+    h.db.run("UPDATE claims SET resumes = 1 WHERE issue_id = ?", [issue.id]);
+    const again = h.restart();
+    await again.resume(getClaim(h.db, issue.id) as NonNullable<ReturnType<typeof getClaim>>);
+    await again.settled();
+    expect(getClaim(h.db, issue.id)?.state).toBe("awaiting_human");
+    expect(h.runner.resumes).toHaveLength(0);
+    expect(h.runner.launches).toHaveLength(1);
   });
 
   test("attach in planning waits on the live planner run instead of relaunching", async () => {

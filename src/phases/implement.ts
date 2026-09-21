@@ -59,7 +59,8 @@ async function continueRun(agent: MasterAgent, run: Run): Promise<Run> {
 /**
  * The first run of the phase, for the three ways in. Attach waits on the newest run: alive, or
  * ended while the orchestrator was down (the waiter then answers from the row). Resume means
- * reconcile found no live process: make the row agree, then continue the session.
+ * reconcile found no live process and counted a resume: a run that had already stopped on its
+ * own is read like an attach; otherwise the row is made to agree and the session continues.
  */
 async function enter(agent: MasterAgent, entry: { kind: string }): Promise<Run> {
   if (entry.kind === "start") {
@@ -68,10 +69,9 @@ async function enter(agent: MasterAgent, entry: { kind: string }): Promise<Run> 
   }
   const existing = agent.runFor("implement");
   if (!existing) return launchFresh(agent);
-  if (entry.kind === "attach") return existing;
-  if (!terminalOf(agent.deps.db, existing.runId)) {
-    await agent.deps.runner.kill(agent.deps.db, existing.runId);
-  }
+  const ended = terminalOf(agent.deps.db, existing.runId);
+  if (entry.kind === "attach" || ended?.kind === "finished") return existing;
+  if (!ended) await agent.deps.runner.kill(agent.deps.db, existing.runId);
   agent.emit("resumed", { runId: existing.runId, resumes: agent.claim.resumes, how: "boot" });
   return continueRun(agent, existing);
 }

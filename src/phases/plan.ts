@@ -31,9 +31,7 @@ function planInput(agent: MasterAgent, mode: "fresh" | "revise", attachRunId?: s
     cwd: agent.cwd,
     mode,
     waiter: deps.waiter,
-    onLaunched: (run) => {
-      agent.runId = run.runId;
-    },
+    onLaunched: (run) => agent.watch(run.runId),
   };
   if (claim.model) input.model = claim.model;
   if (mode === "revise") {

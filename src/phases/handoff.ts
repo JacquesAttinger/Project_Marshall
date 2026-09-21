@@ -25,9 +25,7 @@ function handoffInput(agent: MasterAgent, attachRunId?: string): HandoffPhaseInp
     round: claim.bounces + 1,
     waiter: deps.waiter,
     gh: deps.gh,
-    onLaunched: (run) => {
-      agent.runId = run.runId;
-    },
+    onLaunched: (run) => agent.watch(run.runId),
   };
   if (attachRunId) input.attachRunId = attachRunId;
   return input;
