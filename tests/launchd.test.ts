@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:45 CDT
+// Last edited: 2026-09-21 13:55 CDT
 // launchd wrappers with a fake launchctl: status parsing, the missing-plist paths, and the
 // bootstrap/bootout error handling. Also renders the plist template the way install-launchd.sh does
 // and checks the fields the runbook promises.
@@ -136,7 +136,7 @@ describe("bootstrap / bootout", () => {
 });
 
 describe("plist template", () => {
-  test("renders with caffeinate, KeepAlive, RunAtLoad, the repo cwd, and the ~/.marshall logs", () => {
+  test("renders with caffeinate, KeepAlive, RunAtLoad, the repo cwd, the logs, claude, and PATH", () => {
     const template = readFileSync(
       resolve(import.meta.dir, "..", "scripts", "launchd", `${LAUNCHD_LABEL}.plist.template`),
       "utf8",
@@ -144,8 +144,17 @@ describe("plist template", () => {
     const rendered = template
       .replaceAll("{{BUN}}", "/opt/homebrew/bin/bun")
       .replaceAll("{{REPO}}", "/Users/j/code/Project_Marshall")
-      .replaceAll("{{HOME}}", "/Users/j");
+      .replaceAll("{{HOME}}", "/Users/j")
+      .replaceAll("{{CLAUDE}}", "/Users/j/.local/bin/claude")
+      .replaceAll("{{PATH}}", "/Users/j/.local/bin:/opt/homebrew/bin:/usr/bin:/bin");
     expect(rendered).not.toContain("{{");
+    // launchd never reads ~/.zshrc, so the daemon gets claude and PATH from the plist.
+    expect(rendered).toContain(
+      "<key>MARSHALL_CLAUDE_BIN</key>\n    <string>/Users/j/.local/bin/claude</string>",
+    );
+    expect(rendered).toContain(
+      "<key>PATH</key>\n    <string>/Users/j/.local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>",
+    );
     expect(rendered).toContain(
       "<string>exec /usr/bin/caffeinate -i /opt/homebrew/bin/bun /Users/j/code/Project_Marshall/bin/marshall run</string>",
     );
