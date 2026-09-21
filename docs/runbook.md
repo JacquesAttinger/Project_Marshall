@@ -1,6 +1,6 @@
 # Marshall runbook
 
-<!-- Last edited: 2026-09-21 13:55 CDT -->
+<!-- Last edited: 2026-09-21 15:10 CDT -->
 
 **TLDR:** Marshall runs as a launchd agent on the desk laptop.
 `scripts/install-launchd.sh` installs it, `marshall status` shows what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
@@ -42,6 +42,13 @@ State under `~/.marshall` stays.
 
 The daemon writes `~/.marshall/marshall.pid` and removes it on a clean exit.
 `kill` and `status` read it; a stale file (crash, power loss) reads as "not running" once its pid is gone.
+
+## Keeping Marshall off one issue
+
+Put the `human-only` label on an issue and Marshall will never pick it up: the pickable query excludes it, and the scheduler skips it again (reason `human_only`) if it somehow shows up in the pickable set anyway.
+Use it on issues important enough to need a human doing the planning and implementation, not just the review.
+Remove the label to make the issue pickable again.
+It does nothing to an issue Marshall has already claimed — add it before the claim, not after.
 
 ## Reading it
 

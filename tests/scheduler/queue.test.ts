@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:05 CDT
+// Last edited: 2026-09-21 15:10 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { setPause } from "../../src/caps.ts";
@@ -83,6 +83,24 @@ describe("collectQueue", () => {
     const report = await collectQueue(h.deps);
     expect(report.pausedUntil).toBe(until.toISOString());
     expect(report.rows[0]?.reasons).toEqual([`paused until ${until.toISOString()}`]);
+  });
+});
+
+describe("collectQueue: human-only label", () => {
+  test("shows a human-only issue as wouldStart false, ahead of every other check", async () => {
+    h = makeHarness({
+      issues: [pickable({ identifier: "CB-1", labels: ["human-only"] })],
+    });
+    seedClaim(h.db, { issueId: "issue-1", slot: 0, state: "blocked", branch: "b", bounces: 9 });
+    const report = await collectQueue(h.deps);
+    expect(report.rows).toMatchObject([
+      {
+        identifier: "CB-1",
+        kind: "human_only",
+        wouldStart: false,
+        reasons: ["human-only label: Marshall never picks this up"],
+      },
+    ]);
   });
 });
 

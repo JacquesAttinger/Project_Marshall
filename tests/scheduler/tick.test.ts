@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:30 CDT
+// Last edited: 2026-09-21 15:10 CDT
 
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPause } from "../../src/caps.ts";
@@ -308,5 +308,25 @@ describe("tick: pause and failures", () => {
     // The write-ahead row did not survive to hold a slot: CB-2 took slot 0.
     expect(getClaim(h.db, "issue-1")).toBeNull();
     expect(getClaim(h.db, "issue-2")?.slot).toBe(0);
+  });
+});
+
+describe("tick: human-only label", () => {
+  test("skips an issue labeled human-only without touching Linear or the claim table", async () => {
+    h = makeHarness({
+      issues: [
+        pickable({ identifier: "CB-1", labels: ["human-only"] }),
+        pickable({ identifier: "CB-2" }),
+      ],
+    });
+    const result = await tick(h.deps);
+    expect(result.decisions[0]).toMatchObject({
+      identifier: "CB-1",
+      action: "skipped",
+      reason: "human_only",
+    });
+    expect(h.linear.calls.filter((c) => c.issueId === "issue-1")).toHaveLength(0);
+    expect(getClaim(h.db, "issue-1")).toBeNull();
+    expect(result.decisions.find((d) => d.identifier === "CB-2")?.action).toBe("started");
   });
 });

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 13:40 CDT
+// Last edited: 2026-09-21 15:10 CDT
 
 import { describe, expect, test } from "bun:test";
 import { ConfigError } from "../../src/config.ts";
@@ -100,6 +100,17 @@ describe("connectLinear", () => {
       /state "Needs Verification".*label "marshall\/agent-2".*marshall linear setup/,
     );
   });
+
+  test("names the human-only label when it is missing", async () => {
+    const promise = connect({
+      TeamMeta: () => {
+        const team = fullTeamData();
+        team.team.labels.nodes = team.team.labels.nodes.filter((l) => l.name !== "human-only");
+        return team;
+      },
+    });
+    await expect(promise).rejects.toThrow(/label "human-only"/);
+  });
 });
 
 describe("listPickable", () => {
@@ -119,6 +130,7 @@ describe("listPickable", () => {
     const call = fake.callsFor("PickableIssues")[0];
     expect(call?.variables).toEqual({ teamId: IDS.team, assigneeId: IDS.viewer });
     expect(call?.query).toContain('state: { type: { eq: "unstarted" } }');
+    expect(call?.query).toContain('labels: { every: { name: { neq: "human-only" } } }');
     expect(issues).toHaveLength(1);
     expect(issues[0]?.identifier).toBe("CB-1");
     expect(issues[0]?.labels).toEqual(["marshall/agent-1", "bug"]);
