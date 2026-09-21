@@ -1,5 +1,6 @@
-// Last edited: 2026-09-20 23:00 CDT
-// Typed loaders for marshall.config.json (committed) and process.env (from .env).
+// Last edited: 2026-09-21 12:35 CDT
+// Typed loaders for marshall.config.json (committed, JSONC: `//` and `/* */` comments allowed)
+// and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
@@ -131,7 +132,8 @@ export function loadConfig(explicitPath?: string): Config {
   }
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(path, "utf8"));
+    // JSONC, so the committed file can carry a comment per key.
+    raw = Bun.JSONC.parse(readFileSync(path, "utf8"));
   } catch (err) {
     throw new ConfigError(`Config file is not valid JSON: ${path} (${(err as Error).message})`);
   }

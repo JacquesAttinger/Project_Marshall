@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:05 CDT
+// Last edited: 2026-09-21 12:35 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -145,9 +145,19 @@ describe("loadConfig", () => {
     expect(() => loadConfig(path)).toThrow(/not valid JSON/);
   });
 
+  test("comments in the config file are allowed", () => {
+    const path = join(home.dir, "commented.json");
+    writeFileSync(
+      path,
+      `{\n  // the team\n  "workspace": "w", /* inline */ "teamId": "t",\n  "repoPath": "${home.dir}"\n}`,
+    );
+    expect(loadConfig(path).workspace).toBe("w");
+  });
+
   test("the committed marshall.config.json is valid apart from the machine-specific repoPath", () => {
     // CI has no ~/code/ChessBuddy, so swap repoPath for a directory that exists everywhere.
-    const raw = JSON.parse(readFileSync(DEFAULT_CONFIG_PATH, "utf8"));
+    const text = readFileSync(DEFAULT_CONFIG_PATH, "utf8");
+    const raw = Bun.JSONC.parse(text) as Record<string, unknown>;
     expect(raw.repoPath).toBe("~/code/ChessBuddy");
     const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
     expect(config.workspace).toBe("chessbuddy");
