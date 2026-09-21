@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-09-20 22:45 CDT
 // Shapes shared by the scheduler, the caps, and step 08. A Claim is one row of the `claims` table.
 
 import type { Database } from "bun:sqlite";
@@ -14,9 +14,26 @@ export const CLAIMING = "claiming";
 export const CLAIMED = "claimed";
 export const RELEASED = "released";
 export const BLOCKED = "blocked";
+/** The PR is open and a human decides next. The row and worktree stay for rebases and bounces. */
+export const AWAITING_HUMAN = "awaiting_human";
+/** Rebased on the base branch and pushed; waiting for CI. No agent runs. */
+export const REBASING = "rebasing";
+/** The agent hit the usage limit; the claim keeps its slot until the pause ends. */
+export const RATE_LIMITED = "rate_limited";
 
-/** States that free the slot. Must match the `claims_live_slot` partial index in 001_init.sql. */
-export const TERMINAL_CLAIM_STATES: readonly string[] = [RELEASED, BLOCKED];
+/** States that free the slot. Must match the `claims_live_slot` partial index in 004_master.sql. */
+export const TERMINAL_CLAIM_STATES: readonly string[] = [
+  RELEASED,
+  BLOCKED,
+  AWAITING_HUMAN,
+  REBASING,
+];
+
+/**
+ * States reconcile keeps without a liveness check or a resume: no agent is expected to be alive.
+ * The master agent's pulse owns them (merge poll, rebase queue, rate-limit probe).
+ */
+export const PARKED_CLAIM_STATES: readonly string[] = [AWAITING_HUMAN, REBASING, RATE_LIMITED];
 
 export interface Claim {
   issueId: string;
@@ -29,6 +46,18 @@ export interface Claim {
   bounces: number;
   /** Resumes of a dead or stalled agent within this claim. `maxResumes` releases the issue. */
   resumes: number;
+  /** The human key (`CB-12`) that names the issue's files. Null on rows older than migration 004. */
+  identifier: string | null;
+  /** Fresh restarts of a phase after the resumes ran out. One is allowed. */
+  freshRestarts: number;
+  /** The plan file relative to the worktree, once the planner has committed it. */
+  planPath: string | null;
+  /** The planner model the classifier picked; a bounce reuses it. */
+  model: string | null;
+  /** The PR the implement phase opened. */
+  prUrl: string | null;
+  /** The sibling PR whose merge queued a rebase, until that rebase lands. */
+  rebaseAfter: string | null;
   claimedAt: string;
   updatedAt: string;
 }
@@ -37,10 +66,14 @@ export interface Claim {
  * What step 08 plugs in. `start` receives a claim whose worktree exists and whose Linear issue is
  * In Progress with our label. `resume` receives a claim reconcile found without a live agent.
  * Neither may throw after it has launched a job: the scheduler releases the claim on a throw.
+ * `attach` receives a claim reconcile kept (agent alive, or a parked state), so a restarted
+ * orchestrator can rebuild its object. `pulse` runs before every tick, paused or not.
  */
 export interface MasterAgentHooks {
   start(claim: Claim, issue: PickableIssue): Promise<void>;
   resume(claim: Claim): Promise<void>;
+  attach?(claim: Claim): Promise<void>;
+  pulse?(): Promise<void>;
 }
 
 /** The one question the scheduler asks the runner. */

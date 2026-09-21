@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:00 CDT
+// Last edited: 2026-09-21 02:35 CDT
 // The plugin is what the agents load with --plugin-dir; a broken manifest or a skill without
 // frontmatter fails silently inside an agent, so these checks run here instead.
 
@@ -10,7 +10,7 @@ const PLUGIN_ROOT = resolve(import.meta.dir, "..", "plugin");
 const SKILLS_DIR = join(PLUGIN_ROOT, "skills");
 
 /** The skills the rest of Marshall refers to by name. Add here when a step adds one. */
-const REQUIRED_SKILLS = ["plan", "implement", "review", "handoff"];
+const REQUIRED_SKILLS = ["plan", "implement", "review", "handoff", "resolve-conflicts"];
 
 function frontmatter(path: string): Record<string, string> {
   const text = readFileSync(path, "utf8");
@@ -87,6 +87,30 @@ describe("skills", () => {
     );
     const text = readFileSync(join(SKILLS_DIR, "implement", "SKILL.md"), "utf8");
     expect(text).toContain(`${HANDOFF_START}\n${HANDOFF_PLACEHOLDER}\n${HANDOFF_END}`);
+  });
+});
+
+describe("resolve-conflicts skill", () => {
+  const path = join(SKILLS_DIR, "resolve-conflicts", "SKILL.md");
+
+  test("is hidden from the model and takes plan path, issue id, and the mode", () => {
+    const fields = frontmatter(path);
+    expect(fields["disable-model-invocation"]).toBe("true");
+    expect(fields["argument-hint"]).toBe("<plan-path> <ISSUE-ID> <conflict|ci>");
+  });
+
+  test("names the status file, both outcomes, the review skill, and forbids an abort", async () => {
+    const { RESOLVE_STATUS_FILE } = await import("../src/phases/names.ts");
+    const text = readFileSync(path, "utf8");
+    expect(text).toContain(RESOLVE_STATUS_FILE);
+    expect(text).toContain('"outcome": null');
+    expect(text).toContain("`green`");
+    expect(text).toContain("`blocked`");
+    expect(text).toContain('skill: "marshall:review"');
+    expect(text).toContain("Never `git rebase --abort`");
+    for (const name of ["MARSHALL_ISSUE_DIR", "MARSHALL_SLOT", "COMPOSE_PROJECT_NAME"]) {
+      expect(text).toContain(name);
+    }
   });
 });
 

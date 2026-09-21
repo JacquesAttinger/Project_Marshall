@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Row helpers for the `runs` table and hook rows in `events`. All SQL for the runner lives here.
 
 import type { Database } from "bun:sqlite";
@@ -65,6 +65,16 @@ export function getRunByJob(db: Database, jobId: string): Run | null {
   const row = db
     .query<RunRow, [string]>("SELECT * FROM runs WHERE job_id = ? ORDER BY created_at DESC")
     .get(jobId);
+  return row ? rowToRun(row) : null;
+}
+
+/** The newest run launched in `cwd` under `name`, whatever its state, or null. */
+export function latestRunNamed(db: Database, cwd: string, name: string): Run | null {
+  const row = db
+    .query<RunRow, [string, string]>(
+      "SELECT * FROM runs WHERE cwd = ? AND name = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+    )
+    .get(cwd, name);
   return row ? rowToRun(row) : null;
 }
 
@@ -135,6 +145,21 @@ export function newestHookEventAt(db: Database, runId: string): string | null {
     )
     .get(runId);
   return row?.ts ?? null;
+}
+
+/** The newest StopFailure payload recorded for a run, or null. Read back after a restart. */
+export function lastStopFailure(db: Database, runId: string): Record<string, unknown> | null {
+  const row = db
+    .query<{ payload: string | null }, [string]>(
+      "SELECT payload FROM events WHERE agent_id = ? AND type = 'hook.StopFailure' ORDER BY id DESC LIMIT 1",
+    )
+    .get(runId);
+  if (!row?.payload) return null;
+  try {
+    return JSON.parse(row.payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 export function countHookEvents(db: Database, runId: string): number {

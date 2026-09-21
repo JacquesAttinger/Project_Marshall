@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Public shapes for the planning phase. Step 08 builds a PlanPhaseInput and reads the result.
 
 import type { Database } from "bun:sqlite";
@@ -21,6 +21,11 @@ export type PlanMode = "fresh" | "revise";
 export interface RunWaiter {
   /** Resolves with the terminal event, or null once `timeoutMs` passes. Never kills the run. */
   wait(runId: string, timeoutMs: number): Promise<Terminal | null>;
+  /**
+   * End a pending wait by hand, after the caller killed the run (a stall, the issue clock).
+   * True when a wait was pending for that run id.
+   */
+  settle(runId: string, terminal: Terminal): boolean;
   stop(): void;
 }
 
@@ -40,6 +45,12 @@ export interface PlanPhaseInput {
   planPath?: string;
   /** Skip the classifier and plan with this model (revise mode reuses the stored one). */
   model?: string;
+  /**
+   * A planner run that is already going (the orchestrator restarted mid-phase): skip the
+   * classifier, the brief, and the launch; wait on this run and verify its output. `model` is
+   * then required, and `planPath` and `revision` must be given in revise mode.
+   */
+  attachRunId?: string;
   waiter?: RunWaiter;
   onLaunched?: (run: Run) => void;
 }

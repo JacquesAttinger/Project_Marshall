@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:50 CDT
+// Last edited: 2026-09-20 23:05 CDT
 // runHandoffPhase end to end with the fake claude shim: its --bg branch runs a script that plays
 // the writer (copies a fixture to the hand-off path), then the test appends the Stop hook line
 // and the watcher finishes the run. Linear is a recording stub; gh is the fake shim.
@@ -234,6 +234,7 @@ describe("runHandoffPhase, invalid file", () => {
     writerScript(copy("no_pr"));
     const withoutSession: RunWaiter = {
       wait: async () => ({ kind: "finished" }),
+      settle: () => false,
       stop() {},
     };
     const result = await runHandoffPhase(input({ waiter: withoutSession, onLaunched: undefined }));
@@ -307,7 +308,7 @@ describe("runHandoffPhase, run failures", () => {
 
   test("no Stop in time → timeout, and the job is killed", async () => {
     writerScript(copy("good"));
-    const never: RunWaiter = { wait: async () => null, stop() {} };
+    const never: RunWaiter = { wait: async () => null, settle: () => false, stop() {} };
     const result = await runHandoffPhase(input({ waiter: never, onLaunched: undefined }));
     expect(result).toMatchObject({ ok: false, reason: "timeout" });
     expect(fakeStops(env)).toEqual(["fa4e0001"]);

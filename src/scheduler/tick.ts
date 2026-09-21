@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:10 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // One pass of the scheduler: order the pickable issues and start what the caps allow. Each start
 // writes a `claiming` row before it touches Linear, so a crash in the middle leaves a row reconcile
 // can repair instead of an issue that is In Progress and invisible.
@@ -56,25 +56,27 @@ function skipped(
 
 /**
  * Park the issue in Blocked: back to Todo first so every agent label comes off (a human who moves
- * it to Todo later must be able to hand it back), then Blocked, then the local row.
+ * it to Todo later must be able to hand it back), then Blocked, then the local row. One event,
+ * `scheduler.blocked` by default; the master agent passes its own terminal event type.
  */
 export async function blockIssue(
-  deps: SchedulerDeps,
-  issue: PickableIssue,
+  deps: Pick<SchedulerDeps, "db" | "linear" | "log" | "now">,
+  issue: Pick<PickableIssue, "id" | "identifier">,
   claim: Claim,
   why: string,
   comment: string,
+  eventType = "scheduler.blocked",
 ): Promise<void> {
   const now = deps.now().toISOString();
   await deps.linear.release(issue.id, { comment });
   await deps.linear.setState(issue.id, BLOCKED_STATE);
   setClaimState(deps.db, issue.id, BLOCKED, now);
-  insertEvent(deps.db, now, "scheduler.blocked", issue.id, claim.agentId, {
+  insertEvent(deps.db, now, eventType, issue.id, claim.agentId, {
     why,
     bounces: claim.bounces,
     branch: claim.branch,
   });
-  deps.log.warn("scheduler.blocked", { issueId: issue.id, identifier: issue.identifier, why });
+  deps.log.warn(eventType, { issueId: issue.id, identifier: issue.identifier, why });
 }
 
 function bounceLimitComment(claim: Claim, max: number): string {
@@ -131,7 +133,12 @@ async function startIssue(
   } catch (err) {
     return failStart(deps, issue, claiming, "worktree", err);
   }
-  const claim = finishClaim(db, issue.id, { branch, worktreePath, bounce }, now);
+  const claim = finishClaim(
+    db,
+    issue.id,
+    { identifier: issue.identifier, branch, worktreePath, bounce },
+    now,
+  );
   if (!bounce) insertStart(db, issue.id, now);
   insertEvent(db, now, "scheduler.started", issue.id, claim.agentId, {
     slot,

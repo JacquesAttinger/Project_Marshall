@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:20 CDT
+// Last edited: 2026-09-20 22:50 CDT
 // Scheduler test setup: in-memory DB, fake Linear, fake worktrees, recording hooks, fake clock.
 
 import type { Database } from "bun:sqlite";
@@ -18,6 +18,7 @@ export interface Harness {
   lines: LogLine[];
   starts: { claim: Claim; issue: PickableIssue }[];
   resumes: Claim[];
+  attaches: Claim[];
   worktreeCalls: { op: "create" | "reuse"; spec: WorktreeSpec }[];
   /** Issue ids whose agent the fake runner reports alive. */
   alive: Set<string>;
@@ -57,6 +58,7 @@ export function makeHarness(opts: HarnessOptions = {}): Harness {
   const clock = { now: opts.now ?? NOW };
   const starts: Harness["starts"] = [];
   const resumes: Claim[] = [];
+  const attaches: Claim[] = [];
   const worktreeCalls: Harness["worktreeCalls"] = [];
   const alive = new Set<string>();
   const worktreeOp = (op: "create" | "reuse") => async (spec: WorktreeSpec) => {
@@ -80,6 +82,9 @@ export function makeHarness(opts: HarnessOptions = {}): Harness {
         if (opts.failResume?.has(claim.issueId)) throw new Error(`resume failed ${claim.issueId}`);
         resumes.push(claim);
       },
+      async attach(claim) {
+        attaches.push(claim);
+      },
     },
     runner: {
       async isAlive(claim) {
@@ -96,6 +101,7 @@ export function makeHarness(opts: HarnessOptions = {}): Harness {
     lines,
     starts,
     resumes,
+    attaches,
     worktreeCalls,
     alive,
     clock,
@@ -120,8 +126,9 @@ export function seedClaim(
   row: Partial<Claim> & { issueId: string; slot: number; state: string },
 ): void {
   db.run(
-    `INSERT INTO claims (issue_id, agent_id, slot, state, branch, worktree_path, bounces, resumes, claimed_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO claims (issue_id, agent_id, slot, state, branch, worktree_path, bounces, resumes,
+       identifier, fresh_restarts, plan_path, model, pr_url, rebase_after, claimed_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.issueId,
       row.agentId ?? `agent-${row.slot}`,
@@ -131,6 +138,12 @@ export function seedClaim(
       row.worktreePath ?? null,
       row.bounces ?? 0,
       row.resumes ?? 0,
+      row.identifier ?? null,
+      row.freshRestarts ?? 0,
+      row.planPath ?? null,
+      row.model ?? null,
+      row.prUrl ?? null,
+      row.rebaseAfter ?? null,
       row.claimedAt ?? NOW.toISOString(),
       row.updatedAt ?? NOW.toISOString(),
     ],

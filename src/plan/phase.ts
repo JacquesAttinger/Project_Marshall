@@ -1,11 +1,11 @@
-// Last edited: 2026-09-20 13:10 CDT
+// Last edited: 2026-09-20 23:30 CDT
 // runPlanPhase: classify → brief → launch the planner → wait → verify with git → check headings →
 // post the summary to Linear. Each step is small; the phase reads top to bottom.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createLogger } from "../log.ts";
-import { kill, launch, mintRunId, type Run } from "../runner/index.ts";
+import { getRun, kill, launch, mintRunId, type Run } from "../runner/index.ts";
 import { writeBrief } from "./brief.ts";
 import { classifyIssue, modelFor } from "./classify.ts";
 import { renderSummary } from "./summary.ts";
@@ -30,6 +30,7 @@ async function pickModel(
   ctx: Ctx,
 ): Promise<{ model: string; classification: Classification | null } | PlanPhaseResult> {
   if (ctx.model) return { model: ctx.model, classification: null };
+  if (ctx.attachRunId) return fail(ctx, "launch_failed", "attachRunId needs a model");
   try {
     const classification = await classifyIssue(ctx.issue, { model: ctx.config.models.classifier });
     log.info("plan.classified", { issue: ctx.issue.identifier, ...classification });
@@ -116,18 +117,18 @@ async function postSummary(ctx: Ctx, planPath: string): Promise<void> {
   );
 }
 
-/** Plan one issue end to end. Never throws for an agent's mistakes; only for a broken input. */
-export async function runPlanPhase(input: PlanPhaseInput): Promise<PlanPhaseResult> {
-  const ctx: Ctx = {
-    ...input,
-    mode: input.mode ?? "fresh",
-    base: input.base ?? `origin/${input.config.baseBranch}`,
-    runId: mintRunId(`${input.issue.identifier} plan`),
-  };
-  const picked = await pickModel(ctx);
-  if ("ok" in picked) return picked;
-  const revise = await reviseInfo(ctx);
-  ctx.revision = revise.revision;
+/** Brief and launch, or reuse the run the caller is attaching to (no brief, no launch). */
+async function startPlanner(
+  ctx: Ctx,
+  model: string,
+  revise: { planPath?: string; revision?: number },
+): Promise<{ briefPath: string } | PlanPhaseResult> {
+  if (ctx.attachRunId) {
+    const existing = getRun(ctx.db, ctx.attachRunId);
+    if (!existing) return fail(ctx, "launch_failed", `attachRunId ${ctx.attachRunId} is unknown`);
+    log.info("plan.attached", { issue: ctx.issue.identifier, runId: ctx.runId });
+    return { briefPath: "" };
+  }
   const briefPath = writeBrief({
     runId: ctx.runId,
     issue: ctx.issue,
@@ -135,12 +136,30 @@ export async function runPlanPhase(input: PlanPhaseInput): Promise<PlanPhaseResu
     revision: revise.revision,
     planPath: revise.planPath,
   });
+  const run = await launchPlanner(ctx, model, briefPath);
+  if (run instanceof Error) return fail(ctx, "launch_failed", run.message, briefPath);
+  ctx.onLaunched?.(run);
+  return { briefPath };
+}
+
+/** Plan one issue end to end. Never throws for an agent's mistakes; only for a broken input. */
+export async function runPlanPhase(input: PlanPhaseInput): Promise<PlanPhaseResult> {
+  const ctx: Ctx = {
+    ...input,
+    mode: input.mode ?? "fresh",
+    base: input.base ?? `origin/${input.config.baseBranch}`,
+    runId: input.attachRunId ?? mintRunId(`${input.issue.identifier} plan`),
+  };
+  const picked = await pickModel(ctx);
+  if ("ok" in picked) return picked;
+  const revise = await reviseInfo(ctx);
+  ctx.revision = revise.revision;
   const ownWaiter = input.waiter ? null : createRunWaiter(input.db);
   const waiter = input.waiter ?? (ownWaiter as NonNullable<typeof ownWaiter>);
   try {
-    const run = await launchPlanner(ctx, picked.model, briefPath);
-    if (run instanceof Error) return fail(ctx, "launch_failed", run.message, briefPath);
-    input.onLaunched?.(run);
+    const started = await startPlanner(ctx, picked.model, revise);
+    if ("ok" in started) return started;
+    const { briefPath } = started;
     const terminal = await waiter.wait(ctx.runId, ctx.config.planMinutes * 60_000);
     if (!terminal) {
       await kill(input.db, ctx.runId);

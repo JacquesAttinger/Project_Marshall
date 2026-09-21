@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:35 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Public shapes for the agent runner. Nothing here knows about Linear or issues.
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -81,7 +81,14 @@ export interface HookEvent {
   stopBlocked?: boolean;
 }
 
-export type Terminal = { kind: "finished" } | { kind: "failed"; error: string };
+export type Terminal =
+  | { kind: "finished" }
+  | {
+      kind: "failed";
+      error: string;
+      /** The hook's `error_details`, when present: a rate limit names its reset time here. */
+      details?: string;
+    };
 
 export class RunnerError extends Error {
   override name = "RunnerError";

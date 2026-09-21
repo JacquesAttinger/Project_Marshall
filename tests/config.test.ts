@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-09-20 23:05 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -49,6 +49,7 @@ describe("parseConfig", () => {
     expect(config.maxResumes).toBe(2);
     expect(config.planMinutes).toBe(20);
     expect(config.handoffMinutes).toBe(10);
+    expect(config.rateLimitProbeMinutes).toBe(30);
     expect(config.models).toEqual({
       classifier: "haiku",
       planSimple: "opus",
@@ -108,6 +109,9 @@ describe("hand-off config", () => {
     expect(explicit.models.handoff).toBe("haiku");
     expect(handoffModel(explicit)).toBe("haiku");
     expect(() => parseConfig({ ...minimal(), handoffMinutes: 0 })).toThrow(/handoffMinutes/);
+    expect(() => parseConfig({ ...minimal(), rateLimitProbeMinutes: 0 })).toThrow(
+      /rateLimitProbeMinutes/,
+    );
   });
 });
 

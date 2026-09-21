@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:35 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Hook events: ingest a run's events file into the `events` table, classify terminal events,
 // and watch the events folder so the runner learns about completion without polling the daemon.
 // On a terminal event the runner stops the (now idle) session so resume never creates a copy.
@@ -85,9 +85,22 @@ export function classify(event: HookEvent): Terminal | null {
     const tasks = event.payload.background_tasks;
     return Array.isArray(tasks) && tasks.length > 0 ? null : { kind: "finished" };
   }
-  if (event.name === "StopFailure")
-    return { kind: "failed", error: failureKind(event) ?? "unknown" };
+  if (event.name === "StopFailure") {
+    const details = failureDetails(event);
+    return {
+      kind: "failed",
+      error: failureKind(event) ?? "unknown",
+      ...(details ? { details } : {}),
+    };
+  }
   return null;
+}
+
+/** The `error_details` line of a StopFailure, or null. */
+export function failureDetails(event: Pick<HookEvent, "name" | "payload">): string | null {
+  if (event.name !== "StopFailure") return null;
+  const details = event.payload.error_details;
+  return typeof details === "string" && details.length > 0 ? details : null;
 }
 
 /** The `error` field of a StopFailure (`rate_limit`, `overloaded`, ...), or null for other events. */

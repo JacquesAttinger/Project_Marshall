@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 12:40 CDT
+// Last edited: 2026-09-20 23:05 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { appendFileSync, writeFileSync } from "node:fs";
@@ -126,11 +126,15 @@ describe("classify", () => {
     expect(classify({ ...event("stop-empty"), stopBlocked: true })).toBeNull();
   });
 
-  test("StopFailure → failed with the error kind", () => {
+  test("StopFailure → failed with the error kind and its details", () => {
     expect(classify(event("stop-failure-rate-limit"))).toEqual({
       kind: "failed",
       error: "rate_limit",
+      details: "You've hit your usage limit. Resets at 3pm.",
     });
+    const bare = event("stop-failure-rate-limit");
+    delete bare.payload.error_details;
+    expect(classify(bare)).toEqual({ kind: "failed", error: "rate_limit" });
   });
 
   test("SessionStart and SessionEnd are informational", () => {

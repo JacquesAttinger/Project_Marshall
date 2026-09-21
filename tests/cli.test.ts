@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:50 CDT
+// Last edited: 2026-09-20 22:40 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -41,6 +41,11 @@ describe("parseArgs", () => {
     expect(p).toMatchObject({ positional: ["plan", "CB-12"], cwd: "/wt", revise: true });
     expect(parseArgs(["plan", "CB-12", "--cwd=/wt2"]).cwd).toBe("/wt2");
     expect(parseArgs(["status"]).revise).toBe(false);
+  });
+
+  test("run flag: --once", () => {
+    expect(parseArgs(["run", "--once"])).toMatchObject({ positional: ["run"], once: true });
+    expect(parseArgs(["run"]).once).toBe(false);
   });
 });
 
@@ -85,7 +90,7 @@ describe("dispatch", () => {
     expect(await dispatch([])).toBe(2);
   });
 
-  test("db migrate creates the DB and status reports version 3", async () => {
+  test("db migrate creates the DB and status reports version 4", async () => {
     const before = collectStatus();
     expect(before.dbExists).toBe(false);
     expect(before.schemaVersion).toBe(0);
@@ -95,7 +100,7 @@ describe("dispatch", () => {
 
     const after = collectStatus();
     expect(after.dbExists).toBe(true);
-    expect(after.schemaVersion).toBe(3);
+    expect(after.schemaVersion).toBe(4);
     expect(after.counts).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
     expect(after.marshallHome).toBe(home.dir);
   });
@@ -105,11 +110,14 @@ describe("dispatch", () => {
     expect(existsSync(join(home.dir, "marshall.db"))).toBe(false);
   });
 
-  test("linear setup without a key fails with the ConfigError message", async () => {
+  test.each([
+    ["linear", "setup"],
+    ["run", "--once"],
+  ])("%s %s without a key fails with the ConfigError message", async (first, second) => {
     const previous = process.env.MARSHALL_LINEAR_API_KEY;
     delete process.env.MARSHALL_LINEAR_API_KEY;
     try {
-      await expect(dispatch(["linear", "setup"])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY/);
+      await expect(dispatch([first, second])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY/);
     } finally {
       if (previous !== undefined) process.env.MARSHALL_LINEAR_API_KEY = previous;
     }

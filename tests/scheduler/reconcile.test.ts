@@ -1,6 +1,7 @@
-// Last edited: 2026-09-20 16:40 CDT
+// Last edited: 2026-09-20 22:55 CDT
 
 import { afterEach, describe, expect, test } from "bun:test";
+import { setPause } from "../../src/caps.ts";
 import { defaultHooks, startLoop } from "../../src/scheduler/index.ts";
 import { reconcile } from "../../src/scheduler/reconcile.ts";
 import { getClaim, liveClaims } from "../../src/scheduler/store.ts";
@@ -79,7 +80,7 @@ describe("reconcile", () => {
     expect(eventTypes(h.db)).toEqual(["reconcile.orphan_released"]);
   });
 
-  test("keeps an alive claim untouched", async () => {
+  test("keeps an alive claim untouched and hands it to attach", async () => {
     h = makeHarness({ issues: [pickable({ identifier: "CB-1" })] });
     inProgress(h, "issue-1", 0);
     seedClaim(h.db, { issueId: "issue-1", slot: 0, state: "implementing", worktreePath: "/wt/1" });
@@ -88,6 +89,58 @@ describe("reconcile", () => {
     expect(getClaim(h.db, "issue-1")?.state).toBe("implementing");
     expect(h.linear.calls).toHaveLength(0);
     expect(eventTypes(h.db)).toEqual(["reconcile.kept"]);
+    expect(h.attaches.map((c) => c.issueId)).toEqual(["issue-1"]);
+    expect(h.resumes).toHaveLength(0);
+  });
+});
+
+describe("reconcile: parked claims and attach", () => {
+  test("keeps parked claims without a liveness check or a resume, and attaches them", async () => {
+    h = makeHarness({
+      issues: [
+        pickable({ identifier: "CB-1" }),
+        pickable({ identifier: "CB-2" }),
+        pickable({ identifier: "CB-3" }),
+      ],
+      failLiveness: new Set(["issue-1", "issue-2", "issue-3"]),
+    });
+    seedClaim(h.db, {
+      issueId: "issue-1",
+      slot: 0,
+      state: "awaiting_human",
+      worktreePath: "/wt/1",
+      resumes: 2,
+    });
+    seedClaim(h.db, { issueId: "issue-2", slot: 0, state: "rebasing", worktreePath: "/wt/2" });
+    seedClaim(h.db, {
+      issueId: "issue-3",
+      slot: 1,
+      state: "rate_limited",
+      worktreePath: "/wt/3",
+      resumes: 2,
+    });
+    expect(await reconcile(h.deps)).toEqual([
+      { issueId: "issue-3", action: "kept" },
+      { issueId: "issue-1", action: "kept" },
+      { issueId: "issue-2", action: "kept" },
+    ]);
+    expect(h.lines.some((l) => l.event === "reconcile.liveness_error")).toBe(false);
+    expect(h.resumes).toHaveLength(0);
+    expect(h.attaches.map((c) => c.issueId).sort()).toEqual(["issue-1", "issue-2", "issue-3"]);
+    expect(getClaim(h.db, "issue-1")).toMatchObject({ state: "awaiting_human", resumes: 2 });
+    expect(h.linear.calls).toHaveLength(0);
+  });
+
+  test("a throwing attach is logged and the claim stays kept", async () => {
+    h = makeHarness({ issues: [pickable({ identifier: "CB-1" })] });
+    seedClaim(h.db, { issueId: "issue-1", slot: 0, state: "awaiting_human", worktreePath: "/wt" });
+    h.deps.hooks.attach = async () => {
+      throw new Error("attach boom");
+    };
+    expect(await reconcile(h.deps)).toEqual([{ issueId: "issue-1", action: "kept" }]);
+    expect(h.lines.find((l) => l.event === "reconcile.attach_failed")?.fields.error).toBe(
+      "attach boom",
+    );
   });
 });
 
@@ -181,6 +234,44 @@ describe("startLoop", () => {
     const after = polls();
     await Bun.sleep(60);
     expect(polls()).toBe(after);
+  });
+});
+
+describe("startLoop: pulse", () => {
+  test("pulses before every tick, paused or not", async () => {
+    h = makeHarness();
+    const order: string[] = [];
+    h.deps.hooks.pulse = async () => {
+      order.push("pulse");
+    };
+    h.linear.listPickable = async () => {
+      order.push("tick");
+      return [];
+    };
+    const loop = startLoop(h.deps, { pollMs: 10 });
+    await loop.ready;
+    expect(order.slice(0, 2)).toEqual(["pulse", "tick"]);
+    setPause(h.db, new Date(h.clock.now.getTime() + 3_600_000));
+    const before = order.filter((o) => o === "pulse").length;
+    while (order.filter((o) => o === "pulse").length < before + 2) await Bun.sleep(5);
+    loop.stop();
+    expect(order.filter((o) => o === "tick").length).toBeLessThan(
+      order.filter((o) => o === "pulse").length,
+    );
+  });
+
+  test("a pulse that throws is logged and the tick still runs", async () => {
+    h = makeHarness();
+    h.deps.hooks.pulse = async () => {
+      throw new Error("pulse boom");
+    };
+    const loop = startLoop(h.deps, { pollMs: 10 });
+    await loop.ready;
+    loop.stop();
+    expect(h.lines.find((l) => l.event === "scheduler.pulse_error")?.fields.error).toBe(
+      "pulse boom",
+    );
+    expect(h.linear.calls.filter((c) => c.method === "listPickable")).toHaveLength(1);
   });
 
   test("a tick that throws is logged and the loop goes on", async () => {

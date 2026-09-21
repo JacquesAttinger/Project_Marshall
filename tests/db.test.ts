@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-20 22:40 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -90,18 +90,23 @@ describe("migrate", () => {
     expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
-  test("creates the five tables and sets user_version = 3", () => {
+  test("creates the five tables and sets user_version = 4", () => {
     const applied = migrate(db);
-    expect(applied.map((m) => m.name)).toEqual(["001_init.sql", "002_runs.sql", "003_flags.sql"]);
+    expect(applied.map((m) => m.name)).toEqual([
+      "001_init.sql",
+      "002_runs.sql",
+      "003_flags.sql",
+      "004_master.sql",
+    ]);
     expect(tables(db)).toEqual(["claims", "events", "flags", "runs", "starts"]);
-    expect(schemaVersion(db)).toBe(3);
+    expect(schemaVersion(db)).toBe(4);
     expect(counts(db)).toEqual({ claims: 0, starts: 0, events: 0, runs: 0 });
   });
 
   test("second migrate applies nothing", () => {
     migrate(db);
     expect(migrate(db)).toHaveLength(0);
-    expect(schemaVersion(db)).toBe(3);
+    expect(schemaVersion(db)).toBe(4);
   });
 
   test("listMigrations is sorted by number", () => {
@@ -125,6 +130,18 @@ describe("claims slot index", () => {
     insertClaim(db, "CB-1", 0, "released");
     insertClaim(db, "CB-2", 0, "planning");
     expect(counts(db).claims).toBe(2);
+  });
+
+  test("an awaiting_human claim frees the slot but keeps its row", () => {
+    insertClaim(db, "CB-1", 0, "awaiting_human");
+    insertClaim(db, "CB-2", 0, "planning");
+    expect(counts(db).claims).toBe(2);
+  });
+
+  test("a rebasing claim frees the slot; a resolving one holds it", () => {
+    insertClaim(db, "CB-1", 0, "rebasing");
+    insertClaim(db, "CB-2", 0, "resolving");
+    expect(() => insertClaim(db, "CB-3", 0, "planning")).toThrow(/UNIQUE/);
   });
 
   test("a blocked claim frees the slot", () => {

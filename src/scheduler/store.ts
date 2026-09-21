@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-09-20 22:45 CDT
 // Row helpers for `claims`, `starts`, `events`, and `flags`. All scheduler SQL lives here.
 
 import type { Database } from "bun:sqlite";
@@ -14,6 +14,12 @@ interface ClaimRow {
   worktree_path: string | null;
   bounces: number;
   resumes: number;
+  identifier: string | null;
+  fresh_restarts: number;
+  plan_path: string | null;
+  model: string | null;
+  pr_url: string | null;
+  rebase_after: string | null;
   claimed_at: string;
   updated_at: string;
 }
@@ -28,6 +34,12 @@ function rowToClaim(r: ClaimRow): Claim {
     worktreePath: r.worktree_path,
     bounces: r.bounces,
     resumes: r.resumes,
+    identifier: r.identifier,
+    freshRestarts: r.fresh_restarts,
+    planPath: r.plan_path,
+    model: r.model,
+    prUrl: r.pr_url,
+    rebaseAfter: r.rebase_after,
     claimedAt: r.claimed_at,
     updatedAt: r.updated_at,
   };
@@ -55,6 +67,16 @@ export function liveClaims(db: Database): Claim[] {
   return db
     .query<ClaimRow, []>(`SELECT * FROM claims WHERE ${LIVE} ORDER BY claimed_at`)
     .all()
+    .map(rowToClaim);
+}
+
+/** Claims in any of `states`, oldest first. The master agent's pulse reads its parked rows here. */
+export function claimsInStates(db: Database, states: readonly string[]): Claim[] {
+  if (states.length === 0) return [];
+  const marks = states.map(() => "?").join(", ");
+  return db
+    .query<ClaimRow, string[]>(`SELECT * FROM claims WHERE state IN (${marks}) ORDER BY claimed_at`)
+    .all(...states)
     .map(rowToClaim);
 }
 
@@ -98,26 +120,80 @@ export function abandonClaim(db: Database, issueId: string, previous: Claim | nu
 }
 
 export interface FinishClaimInput {
+  identifier: string;
   branch: string;
   worktreePath: string;
   /** A bounce restart: count it and reset the resume budget for the new lifecycle. */
   bounce: boolean;
 }
 
-/** The claim is real: Linear says In Progress with our label and the worktree exists. */
+/**
+ * The claim is real: Linear says In Progress with our label and the worktree exists. A bounce
+ * starts a new lifecycle: the resume and fresh-restart budgets reset, and the PR URL is cleared
+ * until the implement phase reads it back from implement.json (the plan path and model stay).
+ */
 export function finishClaim(db: Database, issueId: string, input: FinishClaimInput, now: string) {
   const bounce = input.bounce ? 1 : 0;
   db.run(
-    `UPDATE claims SET state = ?, branch = ?, worktree_path = ?,
-       bounces = bounces + ?, resumes = CASE WHEN ? THEN 0 ELSE resumes END, updated_at = ?
+    `UPDATE claims SET state = ?, identifier = ?, branch = ?, worktree_path = ?,
+       bounces = bounces + ?, resumes = CASE WHEN ? THEN 0 ELSE resumes END,
+       fresh_restarts = CASE WHEN ? THEN 0 ELSE fresh_restarts END,
+       pr_url = CASE WHEN ? THEN NULL ELSE pr_url END, rebase_after = NULL,
+       updated_at = ?
      WHERE issue_id = ?`,
-    [CLAIMED, input.branch, input.worktreePath, bounce, bounce, now, issueId],
+    [
+      CLAIMED,
+      input.identifier,
+      input.branch,
+      input.worktreePath,
+      bounce,
+      bounce,
+      bounce,
+      bounce,
+      now,
+      issueId,
+    ],
   );
   return getClaim(db, issueId) as Claim;
 }
 
 export function setClaimState(db: Database, issueId: string, state: string, now: string): Claim {
   db.run("UPDATE claims SET state = ?, updated_at = ? WHERE issue_id = ?", [state, now, issueId]);
+  return getClaim(db, issueId) as Claim;
+}
+
+/** The step 08 columns a master agent writes as it goes. `undefined` leaves a column alone. */
+export interface ClaimPatch {
+  planPath?: string | null;
+  model?: string | null;
+  prUrl?: string | null;
+  rebaseAfter?: string | null;
+  slot?: number;
+}
+
+const PATCH_COLUMNS: Record<keyof ClaimPatch, string> = {
+  planPath: "plan_path",
+  model: "model",
+  prUrl: "pr_url",
+  rebaseAfter: "rebase_after",
+  slot: "slot",
+};
+
+export function patchClaim(db: Database, issueId: string, patch: ClaimPatch, now: string): Claim {
+  const sets: string[] = [];
+  const values: (string | number | null)[] = [];
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    sets.push(`${PATCH_COLUMNS[key as keyof ClaimPatch]} = ?`);
+    values.push(value as string | number | null);
+  }
+  if (patch.slot !== undefined) {
+    sets.push("agent_id = ?");
+    values.push(agentIdForSlot(patch.slot));
+  }
+  sets.push("updated_at = ?");
+  values.push(now, issueId);
+  db.run(`UPDATE claims SET ${sets.join(", ")} WHERE issue_id = ?`, values);
   return getClaim(db, issueId) as Claim;
 }
 
@@ -130,6 +206,14 @@ export function bumpResumes(db: Database, issueId: string, now: string): Claim {
     now,
     issueId,
   ]);
+  return getClaim(db, issueId) as Claim;
+}
+
+export function bumpFreshRestarts(db: Database, issueId: string, now: string): Claim {
+  db.run(
+    "UPDATE claims SET fresh_restarts = fresh_restarts + 1, updated_at = ? WHERE issue_id = ?",
+    [now, issueId],
+  );
   return getClaim(db, issueId) as Claim;
 }
 

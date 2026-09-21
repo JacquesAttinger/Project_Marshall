@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:30 CDT
+// Last edited: 2026-09-20 23:05 CDT
 // runPlanPhase end to end with the fake claude shim: its --bg branch runs a script that plays the
 // planner (writes the plan file and commits), then the test appends the Stop hook line and the
 // watcher finishes the run. A fake Linear client records the comment.
@@ -196,7 +196,7 @@ describe("runPlanPhase, failures", () => {
 
   test("no Stop in time → timeout, and the job is killed", async () => {
     planScript(copyAndCommit("good_plan.md"));
-    const never: RunWaiter = { wait: async () => null, stop() {} };
+    const never: RunWaiter = { wait: async () => null, settle: () => false, stop() {} };
     const result = await runPlanPhase(input({ waiter: never, onLaunched: undefined }));
     expect(result).toMatchObject({ ok: false, reason: "timeout" });
     expect(fakeStops(env)).toEqual(["fa4e0001"]);
