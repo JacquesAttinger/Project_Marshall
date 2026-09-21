@@ -1,9 +1,17 @@
-// Last edited: 2026-09-20 16:10 CDT
+// Last edited: 2026-09-20 22:45 CDT
 // Runs once on boot, before the first tick. Every live claim either has a live agent (kept), gets
-// resumed through the step 08 hook while it has budget, or goes back to Todo.
+// resumed through the step 08 hook while it has budget, or goes back to Todo. Parked claims
+// (a PR waiting on a human, a rebase waiting on CI, a rate-limit pause) are kept without a
+// liveness check: no agent is expected there. Every kept claim is handed to `hooks.attach`.
 
-import { bumpResumes, insertEvent, liveClaims, releaseClaim } from "./store.ts";
-import { CLAIMING, type Claim, type ReconcileDecision, type SchedulerDeps } from "./types.ts";
+import { bumpResumes, claimsInStates, insertEvent, liveClaims, releaseClaim } from "./store.ts";
+import {
+  CLAIMING,
+  type Claim,
+  PARKED_CLAIM_STATES,
+  type ReconcileDecision,
+  type SchedulerDeps,
+} from "./types.ts";
 
 const ORPHAN_COMMENT =
   "Marshall restarted in the middle of picking this issue up and released it. It will be picked up again on the next tick.";
@@ -42,18 +50,33 @@ async function isAlive(deps: SchedulerDeps, claim: Claim): Promise<boolean> {
   }
 }
 
+/** Kept: log it, then hand it to the master agent. A throwing attach is logged, never fatal. */
+async function keep(deps: SchedulerDeps, claim: Claim, why: string): Promise<ReconcileDecision> {
+  const now = deps.now().toISOString();
+  insertEvent(deps.db, now, "reconcile.kept", claim.issueId, claim.agentId, {
+    state: claim.state,
+    why,
+  });
+  deps.log.info("reconcile.kept", { issueId: claim.issueId, state: claim.state, why });
+  try {
+    await deps.hooks.attach?.(claim);
+  } catch (err) {
+    deps.log.error("reconcile.attach_failed", {
+      issueId: claim.issueId,
+      error: (err as Error).message,
+    });
+  }
+  return { issueId: claim.issueId, action: "kept" };
+}
+
 async function reconcileOne(deps: SchedulerDeps, claim: Claim): Promise<ReconcileDecision> {
   const { db, config, hooks, log } = deps;
   if (claim.state === CLAIMING) {
     await release(deps, claim, "reconcile.orphan_released", ORPHAN_COMMENT);
     return { issueId: claim.issueId, action: "orphan_released" };
   }
-  if (await isAlive(deps, claim)) {
-    const now = deps.now().toISOString();
-    insertEvent(db, now, "reconcile.kept", claim.issueId, claim.agentId, { state: claim.state });
-    log.info("reconcile.kept", { issueId: claim.issueId, state: claim.state });
-    return { issueId: claim.issueId, action: "kept" };
-  }
+  if (PARKED_CLAIM_STATES.includes(claim.state)) return keep(deps, claim, "parked");
+  if (await isAlive(deps, claim)) return keep(deps, claim, "alive");
   if (claim.resumes < config.maxResumes) {
     const now = deps.now().toISOString();
     const resumed = bumpResumes(db, claim.issueId, now);
@@ -77,9 +100,17 @@ async function reconcileOne(deps: SchedulerDeps, claim: Claim): Promise<Reconcil
   return { issueId: claim.issueId, action: "released" };
 }
 
+/** Every claim reconcile looks at: the live ones, plus the parked ones that hold no slot. */
+function claimsToReconcile(deps: SchedulerDeps): Claim[] {
+  const live = liveClaims(deps.db);
+  const seen = new Set(live.map((c) => c.issueId));
+  const parked = claimsInStates(deps.db, PARKED_CLAIM_STATES).filter((c) => !seen.has(c.issueId));
+  return [...live, ...parked];
+}
+
 export async function reconcile(deps: SchedulerDeps): Promise<ReconcileDecision[]> {
   const decisions: ReconcileDecision[] = [];
-  for (const claim of liveClaims(deps.db)) {
+  for (const claim of claimsToReconcile(deps)) {
     decisions.push(await reconcileOne(deps, claim));
   }
   return decisions;

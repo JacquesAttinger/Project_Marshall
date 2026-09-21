@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 16:10 CDT
+// Last edited: 2026-09-20 22:45 CDT
 // Public surface of the scheduler. Step 08 plugs its master agent in through `MasterAgentHooks`
 // and calls `startLoop`; `marshall queue` uses `tick`'s building blocks for a dry run.
 
@@ -11,11 +11,16 @@ import type { Claim, Liveness, MasterAgentHooks, SchedulerDeps } from "./types.t
 
 export { reconcile } from "./reconcile.ts";
 export {
+  bumpFreshRestarts,
+  bumpResumes,
+  type ClaimPatch,
+  claimsInStates,
   getClaim,
   insertEvent,
   isLive,
   liveClaims,
   lowestFreeSlot,
+  patchClaim,
   releaseClaim,
   setClaimState,
 } from "./store.ts";
@@ -33,7 +38,17 @@ export type {
   WorktreeOps,
   WorktreeSpec,
 } from "./types.ts";
-export { BLOCKED, CLAIMED, CLAIMING, RELEASED, TERMINAL_CLAIM_STATES } from "./types.ts";
+export {
+  AWAITING_HUMAN,
+  BLOCKED,
+  CLAIMED,
+  CLAIMING,
+  PARKED_CLAIM_STATES,
+  RATE_LIMITED,
+  REBASING,
+  RELEASED,
+  TERMINAL_CLAIM_STATES,
+} from "./types.ts";
 
 /** A claim is alive when any non-terminal run in its worktree has a live daemon process. */
 export function runnerLiveness(db: Database): Liveness {
@@ -82,13 +97,19 @@ export interface Loop {
 /**
  * Reconcile once, then tick every `pollMs` (default `config.pollSeconds`). Ticks never overlap:
  * the next one is scheduled when the current one ends. A tick that throws is logged and the loop
- * goes on.
+ * goes on. The master agent's `pulse` runs before each tick, paused or not, so a resolver run
+ * takes a free slot before a new start does and a rate-limit probe fires when the pause ends.
  */
 export function startLoop(deps: SchedulerDeps, opts: { pollMs?: number } = {}): Loop {
   const pollMs = opts.pollMs ?? deps.config.pollSeconds * 1000;
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   const safeTick = async () => {
+    try {
+      await deps.hooks.pulse?.();
+    } catch (err) {
+      deps.log.error("scheduler.pulse_error", { error: (err as Error).message });
+    }
     try {
       await tick(deps);
     } catch (err) {
