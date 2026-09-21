@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:40 CDT
+// Last edited: 2026-09-21 00:10 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -10,8 +10,10 @@ import {
   isPaused,
   localDayEnd,
   localDayStart,
+  manualPauseAt,
   pauseUntil,
   readCapCounts,
+  setManualPause,
   setPause,
   startsInWindow,
   startsToday,
@@ -146,6 +148,22 @@ describe("pause flag", () => {
     db.run("INSERT INTO flags (key, value) VALUES ('pause_until', 'soon')");
     expect(pauseUntil(db)).toBeNull();
   });
+
+  test("the manual pause never expires and survives a rate-limit resume clearing pause_until", () => {
+    expect(manualPauseAt(db)).toBeNull();
+    setManualPause(db, NOW);
+    expect(manualPauseAt(db)).toBe(NOW.toISOString());
+    expect(isPaused(db, new Date(NOW.getTime() + 365 * 86_400_000))).toBe(true);
+    setPause(db, new Date(NOW.getTime() + 60_000));
+    setPause(db, null);
+    expect(isPaused(db, NOW)).toBe(true);
+    expect(capCheck(db, config, NOW, { firstStart: true }).reasons).toEqual([
+      `paused by \`marshall pause\` at ${NOW.toISOString()}`,
+    ]);
+    expect(readCapCounts(db, config, NOW).pausedAt).toBe(NOW.toISOString());
+    setManualPause(db, null);
+    expect(isPaused(db, NOW)).toBe(false);
+  });
 });
 
 describe("dry-run helpers", () => {
@@ -157,6 +175,7 @@ describe("dry-run helpers", () => {
       window: 0,
       windowFreesAt: null,
       pausedUntil: null,
+      pausedAt: null,
     });
     const freesAt = new Date(NOW.getTime() + 5 * 3_600_000).toISOString();
     const fresh = countsAfterStart(counts, { firstStart: true }, NOW, config);
