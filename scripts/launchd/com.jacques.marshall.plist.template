@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Marshall LaunchAgent. Rendered by scripts/install-launchd.sh; {{BUN}}, {{REPO}}, {{HOME}} are
-     filled in there. Same layout as ~/Library/LaunchAgents/com.jacques.branch-janitor.plist.
+<!-- Marshall LaunchAgent. Rendered by scripts/install-launchd.sh; {{BUN}}, {{REPO}}, {{HOME}},
+     {{CLAUDE}}, and {{PATH}} are filled in there. Same layout as ~/Library/LaunchAgents/com.jacques.branch-janitor.plist.
      caffeinate -i wraps the daemon so the laptop never idle-sleeps while Marshall runs (spec 10.1).
      caffeinate execs bun in place and forks a child that holds the sleep assertion, so the pid
      launchd tracks is bun's own: SIGTERM from bootout reaches the daemon directly, and the
      assertion goes away with it.
      KeepAlive restarts a crashed daemon; RunAtLoad starts it at login and after a reboot.
      WorkingDirectory is the repo so Bun finds .env for the Linear key and the ntfy prefix.
-     Last edited: 2026-09-21 02:05 CDT -->
+     PATH and MARSHALL_CLAUDE_BIN are set here because launchd's shell never reads ~/.zshrc: without
+     them the daemon cannot find ~/.local/bin/claude, and every issue blocks on classifier_failed.
+     Last edited: 2026-09-21 13:55 CDT -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -25,6 +27,10 @@
   <dict>
     <key>MARSHALL_QUIET</key>
     <string>1</string>
+    <key>MARSHALL_CLAUDE_BIN</key>
+    <string>{{CLAUDE}}</string>
+    <key>PATH</key>
+    <string>{{PATH}}</string>
   </dict>
   <key>StandardOutPath</key>
   <string>{{HOME}}/.marshall/logs/launchd.out.log</string>

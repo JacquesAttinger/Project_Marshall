@@ -1,6 +1,6 @@
 # Marshall runbook
 
-<!-- Last edited: 2026-09-21 02:05 CDT -->
+<!-- Last edited: 2026-09-21 13:55 CDT -->
 
 **TLDR:** Marshall runs as a launchd agent on the desk laptop.
 `scripts/install-launchd.sh` installs it, `marshall status` shows what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
@@ -155,5 +155,6 @@ A claim row that still names the worktree is fine: the next pickup recreates it 
 
 - `marshall status` says `installed but not loaded`: `marshall start`. If bootstrap fails, `launchctl print gui/$(id -u)/com.jacques.marshall` and `~/.marshall/logs/launchd.err.log` say why.
 - The daemon restarts in a loop: `~/.marshall/logs/launchd.err.log` has the stack. Common causes: `.env` missing in the repo (the plist's working directory), `marshall.config.json` invalid, `bun` moved (rerun the install script).
+- Every issue blocks at once with `classifier_failed` and the log says `Executable not found in $PATH: "claude"`: the plist's `PATH` or `MARSHALL_CLAUDE_BIN` is stale (launchd never reads `~/.zshrc`). Rerun `scripts/install-launchd.sh` from a shell where `claude` works; it renders both into the plist. Then move the blocked issues back to Todo; their worktrees are reused.
 - The laptop slept: `caffeinate -i` only prevents idle sleep. A closed lid or a manual sleep stops everything; on wake, launchd is still running the daemon, and reconcile picks the agents up.
 - Pushes stopped: `marshall notify test finished`. Then `grep notify ~/.marshall/logs/marshall.log | tail`.
