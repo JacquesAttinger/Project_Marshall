@@ -1,6 +1,6 @@
 # Iteration 1 — Build Steps
 
-<!-- Last edited: 2026-09-20 12:22 CDT -->
+<!-- Last edited: 2026-09-21 03:05 CDT -->
 
 **TLDR:** Iteration 1 is split into 11 steps.
 Each step is one Markdown file that one agent can carry out.
@@ -49,7 +49,7 @@ Source spec: [`../project_marshall_plan.md`](../project_marshall_plan.md).
 | 05 | [`05_implement_and_review_phase.md`](05_implement_and_review_phase.md) | `marshall-implement` skill: `ship-plan` + Compose isolation + `code-review` loop |
 | 06 | [`06_handoff_package.md`](06_handoff_package.md) | The orientation + recipe package, posted to Linear, PR, and file |
 | 07 | [`07_queue_and_scheduler.md`](07_queue_and_scheduler.md) | Poll, order, caps, cadence, claim, reconcile |
-| 08 | [`08_master_agent_state_machine.md`](08_master_agent_state_machine.md) | Per-issue lifecycle: phases, bounces, timeouts, resumes, rate-limit pause, rebase after merge |
+| 08 | [`08_master_agent_state_machine.md`](08_master_agent_state_machine.md) | Per-issue lifecycle: phases, bounces, timeouts, resumes, rate-limit pause, rebase after merge (built; see [`../state_machine.md`](../state_machine.md)) |
 | 09 | [`09_ops_launchd_notifications_cli.md`](09_ops_launchd_notifications_cli.md) | launchd, caffeinate, ntfy push, `marshall status`, runbook |
 | 10 | [`10_e2e_dry_run.md`](10_e2e_dry_run.md) | Seed real issues, run for a day, tune, define "proven" |
 | 11 | [`11_innovate_agent.md`](11_innovate_agent.md) | Scheduled repo scan → feature proposals → my like/pass + note → Linear issue with my input merged in |
