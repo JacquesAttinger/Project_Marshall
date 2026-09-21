@@ -162,7 +162,7 @@ describe("loadConfig", () => {
     const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
     expect(config.workspace).toBe("chessbuddy");
     expect(config.teamId).toBe("91f682c4-ff2b-4fa3-a3d6-46c22ea3882d");
-    expect(config.maxAgents).toBe(2);
+    expect(config.maxAgents).toBe(3);
     expect(config.handoffMinutes).toBe(10);
     expect(config.models.handoff).toBe("opus");
   });
