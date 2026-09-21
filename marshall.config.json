@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 12:35 CDT
+// Last edited: 2026-09-21 12:50 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
@@ -14,13 +14,13 @@
 
   // --- How many agents, and how often they may start (the Max plan budget) ---
   // Issues worked on at the same time. One slot, one worktree, one Compose stack each. Max 3.
-  "maxAgents": 2,
+  "maxAgents": 3,
   // New issue starts allowed per calendar day.
-  "dailyStartCap": 6,
+  "dailyStartCap": 10,
   // New issue starts allowed inside any rolling window of `windowHours` hours.
-  "windowStartCap": 2,
+  "windowStartCap": 10,
   // Length of that rolling window, in hours.
-  "windowHours": 5,
+  "windowHours": 3,
   // How often the daemon polls Linear and checks on its agents, in seconds.
   "pollSeconds": 45,
 
@@ -28,7 +28,7 @@
   // An agent with no activity for this many minutes counts as stalled and is resumed.
   "stallMinutes": 5,
   // Total wall clock one issue may take, from claim to hand-off. A bounce restarts it.
-  "issueTimeoutHours": 2,
+  "issueTimeoutHours": 3,
   // Code -> review -> fix rounds the implementer may run before it gives up (Blocked).
   "maxFixCycles": 4,
   // Times a human may send an issue back (comment + move to Todo) before it is parked.
