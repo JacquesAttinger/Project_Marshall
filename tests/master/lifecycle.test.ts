@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 01:30 CDT
+// Last edited: 2026-09-21 14:40 CDT
 // The master agent's driver end to end with fakes: the happy path, the honest give-ups from
 // implement.json, the bounce (revise plan, same branch, hand-off rewritten), and a restart of the
 // orchestrator in the middle of the implement phase.
@@ -38,7 +38,7 @@ async function startThroughPlanning(identifier = "CB-1") {
 
 describe("happy path", () => {
   test("plan → implement → hand-off → Needs Verification, finished, slot freed", async () => {
-    h = makeMasterHarness();
+    h = makeMasterHarness({ config: { fileFollowUps: true } });
     const { issue, implementRun } = await startThroughPlanning();
 
     // Planning ran fresh, and its result landed on the claim.
@@ -105,6 +105,29 @@ describe("happy path", () => {
   });
 });
 
+describe("follow-ups", () => {
+  test("with fileFollowUps off (the default) nothing is filed; the proposals are only counted", async () => {
+    h = makeMasterHarness();
+    expect(h.config.fileFollowUps).toBe(false);
+    const issue = registerIssue(h, "CB-1");
+    const claim = claimFor(h, issue);
+    await h.hooks.start(claim, issue);
+    await until(() => h.runner.launches.length === 1);
+    const implementRun = h.runner.launches[0]?.runId as string;
+    writeStatus("CB-1");
+    h.waiter.finish(implementRun, { kind: "finished" });
+    await h.hooks.settled();
+
+    expect(h.linear.stateOf(issue.id)).toBe("Needs Verification");
+    expect(h.linear.followUps).toEqual([]);
+    expect(masterEvents(h.db)).not.toContain("followup_filed");
+    expect(eventPayloads(h.db, "finished")[0]).toMatchObject({ prUrl: PR_URL, followups: 0 });
+    expect(h.lines.find((l) => l.event === "master.followups_skipped")?.fields).toMatchObject({
+      proposed: 1,
+    });
+  });
+});
+
 describe("honest give-ups", () => {
   test.each(["review_exhausted", "tests_red", "blocked"] as const)(
     "%s → Blocked with one event and the reason in the comment",
@@ -150,7 +173,7 @@ describe("honest give-ups", () => {
 
 describe("bounce", () => {
   test("revise plan with the stored model → implement on the same branch → hand-off round 2", async () => {
-    h = makeMasterHarness();
+    h = makeMasterHarness({ config: { fileFollowUps: true } });
     const issue = registerIssue(h, "CB-1");
     // The first lifecycle, done: awaiting_human with a PR and a finished implement.json.
     const first = claimFor(h, issue);
