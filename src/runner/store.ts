@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:00 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // Row helpers for the `runs` table and hook rows in `events`. All SQL for the runner lives here.
 
 import type { Database } from "bun:sqlite";
@@ -75,6 +75,16 @@ export function latestRunNamed(db: Database, cwd: string, name: string): Run | n
       "SELECT * FROM runs WHERE cwd = ? AND name = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
     )
     .get(cwd, name);
+  return row ? rowToRun(row) : null;
+}
+
+/** The newest run launched in `cwd` under any name, or null. `marshall status` and `logs` use it. */
+export function latestRunInCwd(db: Database, cwd: string): Run | null {
+  const row = db
+    .query<RunRow, [string]>(
+      "SELECT * FROM runs WHERE cwd = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+    )
+    .get(cwd);
   return row ? rowToRun(row) : null;
 }
 

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 22:45 CDT
+// Last edited: 2026-09-20 23:40 CDT
 // Row helpers for `claims`, `starts`, `events`, and `flags`. All scheduler SQL lives here.
 
 import type { Database } from "bun:sqlite";
@@ -20,6 +20,7 @@ interface ClaimRow {
   model: string | null;
   pr_url: string | null;
   rebase_after: string | null;
+  title: string | null;
   claimed_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ function rowToClaim(r: ClaimRow): Claim {
     model: r.model,
     prUrl: r.pr_url,
     rebaseAfter: r.rebase_after,
+    title: r.title,
     claimedAt: r.claimed_at,
     updatedAt: r.updated_at,
   };
@@ -59,6 +61,14 @@ export function agentIdForSlot(slot: number): AgentId {
 
 export function getClaim(db: Database, issueId: string): Claim | null {
   const row = db.query<ClaimRow, [string]>("SELECT * FROM claims WHERE issue_id = ?").get(issueId);
+  return row ? rowToClaim(row) : null;
+}
+
+/** The claim named by a human key (`CB-12`), as the CLI takes it. Case-insensitive. */
+export function getClaimByIdentifier(db: Database, identifier: string): Claim | null {
+  const row = db
+    .query<ClaimRow, [string]>("SELECT * FROM claims WHERE identifier = ? COLLATE NOCASE")
+    .get(identifier);
   return row ? rowToClaim(row) : null;
 }
 
@@ -121,6 +131,8 @@ export function abandonClaim(db: Database, issueId: string, previous: Claim | nu
 
 export interface FinishClaimInput {
   identifier: string;
+  /** The issue title, for pushes and `marshall status`. Optional so older callers still compile. */
+  title?: string;
   branch: string;
   worktreePath: string;
   /** A bounce restart: count it and reset the resume budget for the new lifecycle. */
@@ -135,7 +147,8 @@ export interface FinishClaimInput {
 export function finishClaim(db: Database, issueId: string, input: FinishClaimInput, now: string) {
   const bounce = input.bounce ? 1 : 0;
   db.run(
-    `UPDATE claims SET state = ?, identifier = ?, branch = ?, worktree_path = ?,
+    `UPDATE claims SET state = ?, identifier = ?, title = COALESCE(?, title), branch = ?,
+       worktree_path = ?,
        bounces = bounces + ?, resumes = CASE WHEN ? THEN 0 ELSE resumes END,
        fresh_restarts = CASE WHEN ? THEN 0 ELSE fresh_restarts END,
        pr_url = CASE WHEN ? THEN NULL ELSE pr_url END, rebase_after = NULL,
@@ -144,6 +157,7 @@ export function finishClaim(db: Database, issueId: string, input: FinishClaimInp
     [
       CLAIMED,
       input.identifier,
+      input.title ?? null,
       input.branch,
       input.worktreePath,
       bounce,
