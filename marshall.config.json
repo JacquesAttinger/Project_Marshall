@@ -1,28 +1,64 @@
+// Last edited: 2026-09-21 12:35 CDT
+// Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
+// The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
+  // --- Where the work comes from and where it lands ---
+  // Linear workspace slug. The Linear key in .env must belong to it, or Marshall refuses to run.
   "workspace": "chessbuddy",
+  // The Linear team whose Todo issues (assigned to the key's user) are picked up.
   "teamId": "91f682c4-ff2b-4fa3-a3d6-46c22ea3882d",
+  // The git repo the agents edit. Each issue gets its own worktree next to it.
   "repoPath": "~/code/ChessBuddy",
+  // The branch every PR targets and every worktree starts from.
   "baseBranch": "main",
+
+  // --- How many agents, and how often they may start (the Max plan budget) ---
+  // Issues worked on at the same time. One slot, one worktree, one Compose stack each. Max 3.
   "maxAgents": 2,
+  // New issue starts allowed per calendar day.
   "dailyStartCap": 6,
+  // New issue starts allowed inside any rolling window of `windowHours` hours.
   "windowStartCap": 2,
+  // Length of that rolling window, in hours.
   "windowHours": 5,
+  // How often the daemon polls Linear and checks on its agents, in seconds.
   "pollSeconds": 45,
+
+  // --- When to give up ---
+  // An agent with no activity for this many minutes counts as stalled and is resumed.
   "stallMinutes": 5,
+  // Total wall clock one issue may take, from claim to hand-off. A bounce restarts it.
   "issueTimeoutHours": 2,
+  // Code -> review -> fix rounds the implementer may run before it gives up (Blocked).
   "maxFixCycles": 4,
+  // Times a human may send an issue back (comment + move to Todo) before it is parked.
   "maxBounces": 3,
+  // Times a crashed or stalled agent is restarted before the issue is released.
   "maxResumes": 2,
+  // Planner wall clock, in minutes, inside the issue clock.
   "planMinutes": 20,
+  // Hand-off writer wall clock, in minutes. It is read-only, so it should finish well under this.
   "handoffMinutes": 10,
+  // After a rate limit with no readable reset time: wait this long, then probe again.
   "rateLimitProbeMinutes": 30,
+
+  // --- Which Claude model runs which phase (values go straight to `--model`) ---
   "models": {
+    // Sorts each issue into simple or complex before planning. Cheap and fast.
     "classifier": "haiku",
+    // Writes the plan for simple issues.
     "planSimple": "opus",
+    // Writes the plan for complex issues.
     "planComplex": "fable",
+    // Writes the hand-off package. Falls back to planSimple when unset.
     "handoff": "opus",
+    // Implements the plan and resolves rebase conflicts. Falls back to opus when unset.
     "implement": "opus"
   },
+
+  // --- Ports, so two agents' Compose stacks do not collide ---
+  // Host ports the target repo's docker-compose.yml reads from env, keyed by the env var name.
+  // Slot N gets base + N * portOffsetPerSlot: slot 0 -> 5432, slot 1 -> 5532, and so on.
   "services": {
     "POSTGRES_HOST_PORT": 5432,
     "ELASTICMQ_HOST_PORT": 9324,

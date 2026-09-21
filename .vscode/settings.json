@@ -1,0 +1,6 @@
+{
+  // marshall.config.json carries comments (JSONC); stop VS Code from flagging them.
+  "files.associations": {
+    "marshall.config.json": "jsonc"
+  }
+}
