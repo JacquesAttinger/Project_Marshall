@@ -1,11 +1,13 @@
-// Last edited: 2026-09-20 10:56 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // A RunWaiter built on the runner's watcher: resolves a promise per run id when the terminal hook
 // event lands. Step 08 will own one watcher for every run; the CLI builds one per command.
 
 import type { Database } from "bun:sqlite";
 import {
+  failureDetails,
   getRun,
   isTerminal,
+  lastStopFailure,
   startWatcher,
   type Terminal,
   type WatcherOpts,
@@ -17,7 +19,11 @@ export function terminalOf(db: Database, runId: string): Terminal | null {
   const run = getRun(db, runId);
   if (!run || !isTerminal(run.state)) return null;
   if (run.state === "finished") return { kind: "finished" };
-  return { kind: "failed", error: run.error ?? run.state };
+  const details = failureDetails({
+    name: "StopFailure",
+    payload: lastStopFailure(db, runId) ?? {},
+  });
+  return { kind: "failed", error: run.error ?? run.state, ...(details ? { details } : {}) };
 }
 
 export function createRunWaiter(db: Database, opts: WatcherOpts = {}): RunWaiter {
@@ -48,6 +54,13 @@ export function createRunWaiter(db: Database, opts: WatcherOpts = {}): RunWaiter
         });
         void watcher.scan();
       });
+    },
+    settle(runId, terminal) {
+      const resolve = pending.get(runId);
+      if (!resolve) return false;
+      pending.delete(runId);
+      resolve(terminal);
+      return true;
     },
     stop: () => watcher.stop(),
   };

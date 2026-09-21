@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 23:20 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Row helpers for the `runs` table and hook rows in `events`. All SQL for the runner lives here.
 
 import type { Database } from "bun:sqlite";
@@ -135,6 +135,21 @@ export function newestHookEventAt(db: Database, runId: string): string | null {
     )
     .get(runId);
   return row?.ts ?? null;
+}
+
+/** The newest StopFailure payload recorded for a run, or null. Read back after a restart. */
+export function lastStopFailure(db: Database, runId: string): Record<string, unknown> | null {
+  const row = db
+    .query<{ payload: string | null }, [string]>(
+      "SELECT payload FROM events WHERE agent_id = ? AND type = 'hook.StopFailure' ORDER BY id DESC LIMIT 1",
+    )
+    .get(runId);
+  if (!row?.payload) return null;
+  try {
+    return JSON.parse(row.payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 export function countHookEvents(db: Database, runId: string): number {

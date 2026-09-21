@@ -1,9 +1,10 @@
-// Last edited: 2026-09-19 22:45 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Public API of the agent runner. Step 08 imports from here and nowhere else in src/runner.
 
 export { claudeBin } from "./claude.ts";
 export {
   classify,
+  failureDetails,
   failureKind,
   ingestFile,
   processRun,
@@ -25,7 +26,7 @@ export {
   status,
   transcriptMtime,
 } from "./status.ts";
-export { getRun, getRunByJob, isTerminal, listActiveRuns } from "./store.ts";
+export { getRun, getRunByJob, isTerminal, lastStopFailure, listActiveRuns } from "./store.ts";
 export type {
   Effort,
   HookEvent,

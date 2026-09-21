@@ -15,6 +15,7 @@
   "maxResumes": 2,
   "planMinutes": 20,
   "handoffMinutes": 10,
+  "rateLimitProbeMinutes": 30,
   "models": {
     "classifier": "haiku",
     "planSimple": "opus",

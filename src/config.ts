@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-09-20 23:00 CDT
 // Typed loaders for marshall.config.json (committed) and process.env (from .env).
 
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -54,6 +54,8 @@ export const ConfigSchema = z
     planMinutes: positiveInt.default(20),
     /** Hand-off writer wall clock. The writer is read-only, so it should be well under this. */
     handoffMinutes: positiveInt.default(10),
+    /** Pause after a rate limit whose reset time could not be parsed; the probe fires after it. */
+    rateLimitProbeMinutes: positiveInt.default(30),
     models: ModelsSchema.default({ classifier: "haiku", planSimple: "opus", planComplex: "fable" }),
     /**
      * Host ports the target repo's Compose file reads from env, keyed by the env var name
