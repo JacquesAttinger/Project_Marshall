@@ -42,6 +42,11 @@ describe("parseArgs", () => {
     expect(parseArgs(["plan", "CB-12", "--cwd=/wt2"]).cwd).toBe("/wt2");
     expect(parseArgs(["status"]).revise).toBe(false);
   });
+
+  test("run flag: --once", () => {
+    expect(parseArgs(["run", "--once"])).toMatchObject({ positional: ["run"], once: true });
+    expect(parseArgs(["run"]).once).toBe(false);
+  });
 });
 
 describe("plan commands", () => {
@@ -105,11 +110,14 @@ describe("dispatch", () => {
     expect(existsSync(join(home.dir, "marshall.db"))).toBe(false);
   });
 
-  test("linear setup without a key fails with the ConfigError message", async () => {
+  test.each([
+    ["linear", "setup"],
+    ["run", "--once"],
+  ])("%s %s without a key fails with the ConfigError message", async (first, second) => {
     const previous = process.env.MARSHALL_LINEAR_API_KEY;
     delete process.env.MARSHALL_LINEAR_API_KEY;
     try {
-      await expect(dispatch(["linear", "setup"])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY/);
+      await expect(dispatch([first, second])).rejects.toThrow(/MARSHALL_LINEAR_API_KEY/);
     } finally {
       if (previous !== undefined) process.env.MARSHALL_LINEAR_API_KEY = previous;
     }

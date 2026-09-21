@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:50 CDT
+// Last edited: 2026-09-21 02:45 CDT
 // Hand-rolled dispatch. No CLI dependency. `bin/marshall` imports this file.
 
 import { runMigrate } from "./db.ts";
@@ -6,6 +6,7 @@ import { runHandoffCheck } from "./handoff.ts";
 import { runLinearSetup } from "./linear.ts";
 import { runPlan, runPlanCheck } from "./plan.ts";
 import { runQueue } from "./queue.ts";
+import { runLoop } from "./run.ts";
 import { runStatus } from "./status.ts";
 
 const USAGE = `Usage: marshall <command> [options]
@@ -23,11 +24,14 @@ Commands:
                       Check a hand-off file: six sections, sub-lists, PR URL, branch
   queue [--json]      Dry-run one scheduler tick: the ordered pickable list and why each
                       issue would or would not start now. Never writes.
+  run [--once]        Run the orchestrator: reconcile, then poll Linear and drive the master
+                      agents until Ctrl-C. --once does one reconcile + tick and exits.
 
 Options:
   --config <path>     Config file (default: MARSHALL_CONFIG or ./marshall.config.json)
   --cwd <path>        Worktree the planner runs in (plan only)
   --revise            Revise an existing plan after a bounce (plan only)
+  --once              One pass, then exit (run only)
   -h, --help          Show this help`;
 
 interface Parsed {
@@ -35,6 +39,7 @@ interface Parsed {
   json: boolean;
   help: boolean;
   revise: boolean;
+  once: boolean;
   configPath?: string;
   cwd?: string;
 }
@@ -46,7 +51,7 @@ const VALUE_OPTIONS: Record<string, keyof Pick<Parsed, "configPath" | "cwd">> = 
 };
 
 export function parseArgs(argv: string[]): Parsed {
-  const out: Parsed = { positional: [], json: false, help: false, revise: false };
+  const out: Parsed = { positional: [], json: false, help: false, revise: false, once: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string;
     const [flag, inline] = a.includes("=")
@@ -59,6 +64,7 @@ export function parseArgs(argv: string[]): Parsed {
       out[key] = value;
     } else if (a === "--json") out.json = true;
     else if (a === "--revise") out.revise = true;
+    else if (a === "--once") out.once = true;
     else if (a === "-h" || a === "--help") out.help = true;
     else if (a.startsWith("-")) throw new Error(`Unknown option: ${a}`);
     else out.positional.push(a);
@@ -95,6 +101,10 @@ const COMMANDS: Record<string, Command> = {
   queue: {
     arity: 0,
     run: async (args) => void (await runQueue({ json: args.json, configPath: args.configPath })),
+  },
+  run: {
+    arity: 0,
+    run: async (args) => void (await runLoop({ once: args.once, configPath: args.configPath })),
   },
   plan: {
     arity: 1,
