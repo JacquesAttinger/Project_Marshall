@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 14:55 CDT
+// Last edited: 2026-09-22 12:44 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -155,13 +155,15 @@ describe("loadConfig", () => {
   });
 
   test("the committed marshall.config.json is valid apart from the machine-specific repoPath", () => {
-    // CI has no ~/code/ChessBuddy, so swap repoPath for a directory that exists everywhere.
+    // CI has no ~/code/TODO_TIMER, so swap repoPath for a directory that exists everywhere.
     const text = readFileSync(DEFAULT_CONFIG_PATH, "utf8");
     const raw = Bun.JSONC.parse(text) as Record<string, unknown>;
-    expect(raw.repoPath).toBe("~/code/ChessBuddy");
+    expect(raw.repoPath).toBe("~/code/TODO_TIMER");
     const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
-    expect(config.workspace).toBe("chessbuddy");
-    expect(config.teamId).toBe("91f682c4-ff2b-4fa3-a3d6-46c22ea3882d");
+    expect(config.workspace).toBe("todo-timer");
+    expect(config.teamId).toBe("f81fe804-8950-4943-a951-6c69a9b3208e");
+    expect(config.baseBranch).toBe("master");
+    expect(config.services).toEqual({});
     expect(config.maxAgents).toBe(3);
     expect(config.handoffMinutes).toBe(10);
     expect(config.models.handoff).toBe("opus");

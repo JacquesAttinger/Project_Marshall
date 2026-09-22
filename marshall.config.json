@@ -1,16 +1,16 @@
-// Last edited: 2026-09-21 14:55 CDT
+// Last edited: 2026-09-22 12:44 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
   // --- Where the work comes from and where it lands ---
   // Linear workspace slug. The Linear key in .env must belong to it, or Marshall refuses to run.
-  "workspace": "chessbuddy",
-  // The Linear team whose Todo issues (assigned to the key's user) are picked up.
-  "teamId": "91f682c4-ff2b-4fa3-a3d6-46c22ea3882d",
+  "workspace": "todo-timer",
+  // The Linear team whose Todo issues (assigned to the key's user) are picked up. Todo_Timer (TOD).
+  "teamId": "f81fe804-8950-4943-a951-6c69a9b3208e",
   // The git repo the agents edit. Each issue gets its own worktree next to it.
-  "repoPath": "~/code/ChessBuddy",
+  "repoPath": "~/code/TODO_TIMER",
   // The branch every PR targets and every worktree starts from.
-  "baseBranch": "main",
+  "baseBranch": "master",
 
   // --- How many agents, and how often they may start (the Max plan budget) ---
   // Issues worked on at the same time. One slot, one worktree, one Compose stack each. Max 3.
@@ -63,11 +63,8 @@
 
   // --- Ports, so two agents' Compose stacks do not collide ---
   // Host ports the target repo's docker-compose.yml reads from env, keyed by the env var name.
-  // Slot N gets base + N * portOffsetPerSlot: slot 0 -> 5432, slot 1 -> 5532, and so on.
-  "services": {
-    "POSTGRES_HOST_PORT": 5432,
-    "ELASTICMQ_HOST_PORT": 9324,
-    "API_HOST_PORT": 8000
-  },
+  // Slot N gets base + N * portOffsetPerSlot: with { "POSTGRES_HOST_PORT": 5432 }, slot 0 -> 5432,
+  // slot 1 -> 5532, and so on. Empty: TODO_TIMER has no Compose file yet.
+  "services": {},
   "portOffsetPerSlot": 100
 }

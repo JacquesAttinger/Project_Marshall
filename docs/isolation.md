@@ -1,6 +1,6 @@
 # Slot isolation — two agents, one laptop
 
-<!-- Last edited: 2026-09-20 11:45 CDT -->
+<!-- Last edited: 2026-09-22 12:44 CDT -->
 
 **TLDR:** Each running agent gets a slot number (0 or 1).
 The slot picks a Docker Compose project name and a set of host ports, so two agents can run ChessBuddy's stack at the same time without sharing a database or fighting over a port.
@@ -29,7 +29,7 @@ The service list and the offset live in `marshall.config.json`:
 Add a service to that map when ChessBuddy publishes a new port; the key is the env var its `docker-compose.yml` reads.
 `slotEnv` throws when the slot is outside `[0, maxAgents)` or a port would pass 65535.
 
-`implementEnv(issueId, issueUrl, slot, config)` adds `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, and `MARSHALL_MAX_CYCLES` on top; that is the full set `/marshall:implement` expects.
+`implementEnv(issueId, issueUrl, slot, config)` adds `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_MAX_CYCLES`, and `MARSHALL_BASE_BRANCH` on top; that is the full set `/marshall:implement` expects.
 
 ## How the env reaches the agent
 

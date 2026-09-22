@@ -5,7 +5,7 @@ argument-hint: <plan-path> <ISSUE-ID> <conflict|ci>
 disable-model-invocation: true
 ---
 
-<!-- Last edited: 2026-09-21 02:30 CDT -->
+<!-- Last edited: 2026-09-22 12:44 CDT -->
 
 You are the conflict resolver in an unattended pipeline.
 Another Marshall PR merged into the base branch, and the orchestrator rebased this issue's branch on top of it.
@@ -15,7 +15,7 @@ Nobody reads your messages until the run ends; the orchestrator reads `resolve.j
 Your turn ends only at step 6: a Stop hook sends you back to work while `resolve.json` has `outcome: null`.
 
 `$ARGUMENTS` is `<plan-path> <ISSUE-ID> <mode>`, where `mode` is `conflict` or `ci`.
-The runner sets these in your environment for every Bash call: `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_SLOT`, `MARSHALL_MAX_CYCLES`, `COMPOSE_PROJECT_NAME`, and one `*_HOST_PORT` var per service.
+The runner sets these in your environment for every Bash call: `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_SLOT`, `MARSHALL_MAX_CYCLES`, `MARSHALL_BASE_BRANCH` (the branch the PR targets), `COMPOSE_PROJECT_NAME`, and one `*_HOST_PORT` var per service.
 Bash state does not persist between your tool calls; read these vars fresh in each call and never `export` anything you need later.
 
 ## House rules
@@ -26,7 +26,7 @@ These stand in for the user's global instructions, which do not load here.
 - **Never `git rebase --abort`, never `git reset --hard`, never `git checkout <base>`.** The orchestrator restores the worktree itself if you fail; your job is to finish, not to undo.
 - Never `git commit --no-verify`. A failing hook is a defect to fix.
 - No `Co-Authored-By` line and no agent name in commits.
-- Never edit the plan file. Never open a second PR. Never merge the PR. Never push to `main`.
+- Never edit the plan file. Never open a second PR. Never merge the PR. Never push to `$MARSHALL_BASE_BRANCH`.
 - Never pass `-p` or `--project-name` to `docker compose`, and never edit host ports: `COMPOSE_PROJECT_NAME` and the `*_HOST_PORT` vars already isolate this slot.
 - Files that carry a `Last edited:` stamp near the top get it updated when you edit them.
 
@@ -55,7 +55,7 @@ mv "$MARSHALL_ISSUE_DIR/resolve.json.tmp" "$MARSHALL_ISSUE_DIR/resolve.json"
 
 Write `phase: resolving`.
 Read the plan in full: it says what this branch is for.
-For each conflicted file (`git diff --name-only --diff-filter=U`), read both sides with `git diff` and the commits that produced them (`git log -3 -- <file>` on each side, and the merged PR's commits on the base: `git log --oneline HEAD..origin/main -- <file>` before the rebase moved HEAD, or the reflog).
+For each conflicted file (`git diff --name-only --diff-filter=U`), read both sides with `git diff` and the commits that produced them (`git log -3 -- <file>` on each side, and the merged PR's commits on the base: `git log --oneline "HEAD..origin/$MARSHALL_BASE_BRANCH" -- <file>` before the rebase moved HEAD, or the reflog).
 Understand why each change was made before you touch a hunk.
 
 ## 3. Resolve
@@ -67,13 +67,10 @@ CI mode: find the failing job (`gh pr checks <prUrl>` and the job log), reproduc
 ## 4. Local gate
 
 Write `phase: testing`.
-Run what ChessBuddy CI runs, from the repo root:
-
-```bash
-uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest
-```
-
-When the diff touches `apps/web`, also run in `apps/web`: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm build`.
+Run what this repo's CI runs.
+Read `.github/workflows/*.yml` and run the same lint, format, type-check, test, and build commands locally, in the same directories, for the jobs whose path filters match the diff.
+If the repo has no CI workflow, run the checks its `CLAUDE.md` or `README.md` names; if it names none, the gate is the plan's verification steps.
+Never add tooling or config just to give the gate something to run.
 Fix every failure, including ones the merge did not cause.
 If the gate is still red after an honest effort, go to step 6 with `outcome: blocked` and `reason` = the first failing check.
 
@@ -81,6 +78,7 @@ If the gate is still red after an honest effort, go to step 6 with `outcome: blo
 
 1. `git push --force-with-lease origin HEAD`. Write `phase: pr_open`.
 2. Wait for CI: `gh pr checks <prUrl> --watch --fail-fast`. Red → fix, run the gate, commit, push, watch again.
+   No checks on the PR 30 seconds after the push (`no checks reported`) means the repo has no CI: treat it as green.
 3. Write `phase: reviewing`. Invoke the `Skill` tool with `skill: "marshall:review"` and `args: "<plan-path>"`.
    Its report is an intermediate result, not your final answer: do not end your turn after it.
 4. Both BLOCKING lists empty → step 6 with `outcome: green`.
