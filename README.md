@@ -1,16 +1,16 @@
 # Project Marshall
 
-<!-- Last edited: 2026-09-21 03:05 CDT -->
+<!-- Last edited: 2026-09-22 12:44 CDT -->
 
 **TLDR:** Marshall watches a Linear board and runs Claude Code agents on the issues.
-Iteration 1 is a Linear autopilot for one repo (ChessBuddy) on a laptop.
+Iteration 1 is a Linear autopilot for one repo on a laptop: the To-Do Timer workspace and `~/code/TODO_TIMER` (it began on ChessBuddy).
 So far: runtime, config, SQLite, logging, CLI, quality gates, the Linear client, the agent runner (`src/runner/` launches `claude --bg` sessions, learns when they stop, and can kill or resume them), the planning phase (`src/plan/` classifies an issue, launches the `/marshall:plan` agent, and checks its plan file), the implement phase (`/marshall:implement` and `/marshall:review` in the plugin; `src/isolation.ts` keeps two agents' Docker stacks apart), the hand-off phase (`src/handoff/` runs the `/marshall:handoff` writer, checks its six-section package, and posts it to Linear and the PR body), the scheduler (`src/scheduler/` polls Linear, checks the caps, claims, makes the worktree, and cleans up after a crash), and the master agent (`src/master/` and `src/phases/` drive one issue through plan → implement → hand-off, enforce the clock, the stall resumes, and the rate-limit pause, and rebase parked PRs when a sibling merges).
 
 ## Setup
 
 ```bash
 bun install
-cp .env.example .env      # put the ChessBuddy key in MARSHALL_LINEAR_API_KEY
+cp .env.example .env      # put the target workspace's key in MARSHALL_LINEAR_API_KEY
 bun run migrate           # creates ~/.marshall/marshall.db
 bin/marshall linear setup # creates the Needs Verification state and the marshall labels (once)
 bin/marshall status       # prints config, state dir, schema version, row counts
