@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-22 12:52 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { collectLinearSetup, formatLinearSetup } from "../../src/cli/linear.ts";
@@ -36,6 +36,7 @@ describe("marshall linear setup", () => {
     expect(text).toContain("Workspace chessbuddy as Test User");
     expect(text).toContain(`Needs Verification  ${IDS.needsVerification}`);
     expect(text).toContain(`Blocked             ${IDS.blocked}`);
+    expect(text).toContain(`human-only          ${IDS.humanOnly}`);
     expect(text).toContain(`marshall/agent-2    ${IDS.agent2}`);
     expect(text).toContain("Created: nothing (already set up)");
     expect(text).toContain("Rate budget: 2498/2500");

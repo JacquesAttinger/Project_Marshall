@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:15 CDT
+// Last edited: 2026-09-22 12:52 CDT
 // `marshall linear setup [--json]` — create the state and labels the loop needs. Idempotent.
 
 import { loadConfig, loadEnv, requireLinearApiKey } from "../config.ts";
@@ -47,6 +47,7 @@ export function formatLinearSetup(report: LinearSetupReport): string {
     ["state", result.needsVerification.name, result.needsVerification.id],
     ["state", result.blocked.name, result.blocked.id],
     ["label", result.agentFiled.name, result.agentFiled.id],
+    ["label", result.humanOnly.name, result.humanOnly.id],
     ["group", result.marshallGroup.name, result.marshallGroup.id],
     ...result.agents.map(
       (a) => ["label", `${result.marshallGroup.name}/${a.name}`, a.id] as [string, string, string],
@@ -56,6 +57,7 @@ export function formatLinearSetup(report: LinearSetupReport): string {
     result.needsVerification,
     result.blocked,
     result.agentFiled,
+    result.humanOnly,
     result.marshallGroup,
     ...result.agents,
   ]
