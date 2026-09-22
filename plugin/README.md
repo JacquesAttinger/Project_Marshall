@@ -1,8 +1,8 @@
 # Marshall plugin
 
-<!-- Last edited: 2026-09-21 03:05 CDT -->
+<!-- Last edited: 2026-09-22 12:44 CDT -->
 
-**TLDR:** The skills Marshall's agents run inside a ChessBuddy worktree.
+**TLDR:** The skills Marshall's agents run inside a worktree of the target repo (`repoPath` in `marshall.config.json`).
 The runner passes `--plugin-dir <this repo>/plugin`, so the skills load in an agent even though `~/.claude/skills` never does (`--setting-sources project,local` drops the `user` source).
 
 | Skill | Invoked as | Who calls it |
@@ -19,11 +19,11 @@ The runner passes `--plugin-dir <this repo>/plugin`, so the skills load in an ag
 
 ```bash
 claude plugin validate plugin
-cd ~/code/ChessBuddy            # any worktree on a feature branch
+cd ~/code/TODO_TIMER            # any worktree of the target repo, on a feature branch
 claude --plugin-dir ~/code/Project_Marshall/plugin "/marshall:review docs/x_plan.md"
 ```
 
-`implement` needs the env the runner sets (`MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_SLOT`, `MARSHALL_MAX_CYCLES`, `COMPOSE_PROJECT_NAME`, the `*_HOST_PORT` vars).
+`implement` needs the env the runner sets (`MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_SLOT`, `MARSHALL_MAX_CYCLES`, `MARSHALL_BASE_BRANCH`, `COMPOSE_PROJECT_NAME`, the `*_HOST_PORT` vars).
 `scripts/launch-implement.ts` sets them; see [`../docs/isolation.md`](../docs/isolation.md) for what each one does.
 `handoff` needs `MARSHALL_ISSUE_DIR`, `MARSHALL_ISSUE_URL`, `MARSHALL_HANDOFF_PATH`, `MARSHALL_ROUND`, `MARSHALL_BASE_BRANCH`, and `MARSHALL_PR_URL`; `scripts/launch-handoff.ts` sets them.
 `resolve-conflicts` needs the same env as `implement` and a worktree that is either mid-rebase (conflict mode) or clean with a red PR (ci mode).

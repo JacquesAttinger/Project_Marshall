@@ -1,12 +1,13 @@
 ---
 name: review
-description: Review the current branch's diff against origin/main on two axes - the built-in /code-review bug hunt (CONFIRMED / PLAUSIBLE) and a Spec pass against the plan file. Reports BLOCKING (confirmed), BLOCKING (spec), and NOTES (plausible). Use from /marshall:implement after each push, or by hand on a finished branch.
+description: Review the current branch's diff against the base branch ($MARSHALL_BASE_BRANCH, default main) on two axes - the built-in /code-review bug hunt (CONFIRMED / PLAUSIBLE) and a Spec pass against the plan file. Reports BLOCKING (confirmed), BLOCKING (spec), and NOTES (plausible). Use from /marshall:implement after each push, or by hand on a finished branch.
 argument-hint: <plan-path>
 ---
 
-<!-- Last edited: 2026-09-20 12:45 CDT -->
+<!-- Last edited: 2026-09-22 12:44 CDT -->
 
-Review the diff between `origin/main` and `HEAD` on two axes and report three lists.
+Review the diff between the base branch and `HEAD` on two axes and report three lists.
+The base branch is `origin/$MARSHALL_BASE_BRANCH`, or `origin/main` when that var is unset (a run by hand); `<base-ref>` below means that ref.
 `/marshall:implement` fixes the two BLOCKING lists and carries NOTES into the hand-off.
 `$ARGUMENTS` is the plan file path, relative to the repo root.
 
@@ -14,7 +15,7 @@ Review the diff between `origin/main` and `HEAD` on two axes and report three li
 
 ```bash
 git fetch origin --quiet
-base=$(git merge-base origin/main HEAD)
+base=$(git merge-base "origin/${MARSHALL_BASE_BRANCH:-main}" HEAD)
 git log --oneline "$base"..HEAD
 git diff --stat "$base"...HEAD
 ```
@@ -25,7 +26,7 @@ Both cases are the caller's problem, not a finding.
 
 ## 2. Bug hunt (built-in `/code-review`)
 
-Invoke the `Skill` tool with `skill: "code-review"` and `args: "high origin/main...HEAD"`.
+Invoke the `Skill` tool with `skill: "code-review"` and `args: "high <base-ref>...HEAD"`.
 It reads every hunk, verifies each candidate, and reports findings with a verdict of `CONFIRMED` or `PLAUSIBLE`.
 Do not pass `--fix`; the caller decides what to fix.
 Collect every finding as `file:line - summary (verdict)`.

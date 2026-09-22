@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 02:35 CDT
+// Last edited: 2026-09-22 12:44 CDT
 // The plugin is what the agents load with --plugin-dir; a broken manifest or a skill without
 // frontmatter fails silently inside an agent, so these checks run here instead.
 
@@ -75,6 +75,7 @@ describe("skills", () => {
       "MARSHALL_ISSUE_URL",
       "MARSHALL_SLOT",
       "MARSHALL_MAX_CYCLES",
+      "MARSHALL_BASE_BRANCH",
       "COMPOSE_PROJECT_NAME",
     ]) {
       expect(text).toContain(name);
@@ -108,7 +109,12 @@ describe("resolve-conflicts skill", () => {
     expect(text).toContain("`blocked`");
     expect(text).toContain('skill: "marshall:review"');
     expect(text).toContain("Never `git rebase --abort`");
-    for (const name of ["MARSHALL_ISSUE_DIR", "MARSHALL_SLOT", "COMPOSE_PROJECT_NAME"]) {
+    for (const name of [
+      "MARSHALL_ISSUE_DIR",
+      "MARSHALL_SLOT",
+      "MARSHALL_BASE_BRANCH",
+      "COMPOSE_PROJECT_NAME",
+    ]) {
       expect(text).toContain(name);
     }
   });

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:55 CDT
+// Last edited: 2026-09-22 12:44 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
@@ -80,6 +80,10 @@ describe("implementEnv", () => {
     expect(env.MARSHALL_ISSUE_DIR).toBe(join(home.dir, "issues", "CB-12"));
     expect(env.MARSHALL_ISSUE_URL).toBe("https://linear.app/x/issue/CB-12");
     expect(env.MARSHALL_MAX_CYCLES).toBe("4");
+    expect(env.MARSHALL_BASE_BRANCH).toBe("main");
+    expect(
+      implementEnv("CB-12", "u", 0, config({ baseBranch: "master" })).MARSHALL_BASE_BRANCH,
+    ).toBe("master");
     expect(implementEnv("CB-12", "u", 0, config({ maxFixCycles: 1 })).MARSHALL_MAX_CYCLES).toBe(
       "1",
     );

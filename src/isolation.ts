@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 10:55 CDT
+// Last edited: 2026-09-22 12:44 CDT
 // Per-slot isolation for agents that share one laptop: each slot gets its own Compose project
 // name and its own host ports, handed to the agent through the settings `env` key (see
 // docs/isolation.md). Nothing here runs Docker; the skill does, with these vars in its env.
@@ -44,7 +44,7 @@ export function slotEnv(slot: number, config: Config): Record<string, string> {
 
 /**
  * `slotEnv` plus what `/marshall:implement` needs: where its status file goes, the issue URL for
- * the PR body, and the review-cycle cap (`config.maxFixCycles`).
+ * the PR body, the review-cycle cap (`config.maxFixCycles`), and the branch PRs target.
  */
 export function implementEnv(
   issueId: string,
@@ -57,5 +57,6 @@ export function implementEnv(
     MARSHALL_ISSUE_DIR: issueDir(issueId),
     MARSHALL_ISSUE_URL: issueUrl,
     MARSHALL_MAX_CYCLES: String(config.maxFixCycles),
+    MARSHALL_BASE_BRANCH: config.baseBranch,
   };
 }
