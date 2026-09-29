@@ -19,7 +19,7 @@ The runner passes `--plugin-dir <this repo>/plugin`, so the skills load in an ag
 
 ```bash
 claude plugin validate plugin
-cd ~/code/TODO_TIMER            # any worktree of the target repo, on a feature branch
+cd ~/code/TickTick            # any worktree of the target repo, on a feature branch
 claude --plugin-dir ~/code/Project_Marshall/plugin "/marshall:review docs/x_plan.md"
 ```
 
