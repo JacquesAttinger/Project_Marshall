@@ -155,10 +155,10 @@ describe("loadConfig", () => {
   });
 
   test("the committed marshall.config.json is valid apart from the machine-specific repoPath", () => {
-    // CI has no ~/code/TODO_TIMER, so swap repoPath for a directory that exists everywhere.
+    // CI has no ~/code/TickTick, so swap repoPath for a directory that exists everywhere.
     const text = readFileSync(DEFAULT_CONFIG_PATH, "utf8");
     const raw = Bun.JSONC.parse(text) as Record<string, unknown>;
-    expect(raw.repoPath).toBe("~/code/TODO_TIMER");
+    expect(raw.repoPath).toBe("~/code/TickTick");
     const config = parseConfig({ ...raw, repoPath: home.dir }, DEFAULT_CONFIG_PATH);
     expect(config.workspace).toBe("todo-timer");
     expect(config.teamId).toBe("f81fe804-8950-4943-a951-6c69a9b3208e");
