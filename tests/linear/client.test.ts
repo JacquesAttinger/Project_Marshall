@@ -244,6 +244,78 @@ describe("release", () => {
   });
 });
 
+describe("complete", () => {
+  test("moves to Done, removes the agent labels the issue has, then comments", async () => {
+    const { fake, client } = await connect({
+      IssueById: () => ({
+        issue: rawDetail({
+          state: { id: IDS.blocked, name: "Blocked", type: "started" },
+          labels: { nodes: [agentLabelNode(2), { id: "l", name: "bug", parent: null }] },
+        }),
+      }),
+    });
+    await client.complete("issue-1", { comment: "Marked Done: pr merged." });
+    expect(fake.callsFor("UpdateIssue")[0]?.variables).toEqual({
+      id: "issue-1",
+      input: { stateId: IDS.done, removedLabelIds: [IDS.agent2] },
+    });
+    expect(fake.callsFor("CreateComment")).toHaveLength(1);
+    expect(fake.callsFor("CreateComment")[0]?.variables).toEqual({
+      input: { issueId: "issue-1", body: `Marked Done: pr merged.${MARSHALL_COMMENT_FOOTER}` },
+    });
+  });
+
+  test("leaves an already completed issue alone: no update, no comment", async () => {
+    const { fake, client, lines } = await connect({
+      IssueById: () => ({
+        issue: rawDetail({ state: { id: IDS.done, name: "Done", type: "completed" } }),
+      }),
+    });
+    await client.complete("issue-1", { comment: "Marked Done." });
+    expect(fake.callsFor("UpdateIssue")).toHaveLength(0);
+    expect(fake.callsFor("CreateComment")).toHaveLength(0);
+    expect(lines.some((l) => l.event === "linear.complete_skipped")).toBe(true);
+  });
+
+  test("sends no removedLabelIds and no comment when there is nothing to remove or say", async () => {
+    const { fake, client } = await connect();
+    await client.complete("issue-1");
+    expect(fake.callsFor("UpdateIssue")[0]?.variables).toEqual({
+      id: "issue-1",
+      input: { stateId: IDS.done },
+    });
+    expect(fake.callsFor("CreateComment")).toHaveLength(0);
+  });
+
+  test("a team without a Done state fails at connect and points at setup", async () => {
+    const promise = connect({
+      TeamMeta: () => {
+        const team = fullTeamData();
+        team.team.states.nodes = team.team.states.nodes.filter((s) => s.name !== "Done");
+        return team;
+      },
+    });
+    await expect(promise).rejects.toThrow(/state "Done".*marshall linear setup/);
+  });
+});
+
+describe("listAwaitingMerge", () => {
+  test("asks for Needs Verification and Blocked issues assigned to the viewer", async () => {
+    const { fake, client } = await connect({
+      ReviewableIssues: () => ({ issues: { nodes: [rawIssue({ identifier: "CB-7" })] } }),
+    });
+    const issues = await client.listAwaitingMerge();
+    expect(issues.map((i) => i.identifier)).toEqual(["CB-7"]);
+    expect(fake.callsFor("ReviewableIssues")[0]?.variables).toEqual({
+      teamId: IDS.team,
+      assigneeId: IDS.viewer,
+    });
+    expect(fake.callsFor("ReviewableIssues")[0]?.query).toContain(
+      'name: { in: ["Needs Verification", "Blocked"] }',
+    );
+  });
+});
+
 describe("setState and comment", () => {
   test("setState resolves the cached id and rejects unknown names", async () => {
     const { fake, client } = await connect();

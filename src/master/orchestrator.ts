@@ -1,10 +1,11 @@
-// Last edited: 2026-09-21 00:20 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // The hooks the scheduler calls, over a map of live MasterAgents. `start` and `resume` build an
 // agent and let its driver run detached (a tick must not wait two hours). `attach` rebuilds one
 // after a restart. `pulse` runs before every tick: the kill flags, then the clock, the rate-limit
-// wake, the stall check for each agent, then the DB-driven rebase machinery for the parked PRs.
+// wake, the stall check for each agent, then the DB-driven rebase machinery for the parked PRs, then the done sweep.
 
 import type { IssueDetail, PickableIssue } from "../linear/index.ts";
+import { sweepDone } from "../phases/done.ts";
 import { pulseRebases } from "../phases/rebase.ts";
 import { AWAITING_HUMAN, type Claim, type MasterAgentHooks, REBASING } from "../scheduler/index.ts";
 import { setFlag } from "../scheduler/store.ts";
@@ -113,6 +114,7 @@ export function createOrchestrator(deps: MasterDeps): Orchestrator {
         }
       }
       await pulseRebases(deps);
+      await sweepDone(deps);
     },
     async settled() {
       await Promise.all([...drivers.values()]);

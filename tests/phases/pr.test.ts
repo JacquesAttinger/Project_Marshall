@@ -1,7 +1,7 @@
 // Last edited: 2026-09-21 02:15 CDT
 
 import { describe, expect, test } from "bun:test";
-import { ciStateOf, viewPr } from "../../src/phases/pr.ts";
+import { ciStateOf, findPrsFor, viewPr } from "../../src/phases/pr.ts";
 
 const now = new Date("2026-09-20T18:10:00Z");
 const check = (status: string, conclusion: string | null) => ({
@@ -70,5 +70,42 @@ describe("viewPr", () => {
       "--json",
       "mergedAt,state,statusCheckRollup",
     ]);
+  });
+});
+
+describe("findPrsFor", () => {
+  const row = (number: number, title: string, state = "MERGED") => ({
+    number,
+    url: `https://github.com/example/tod/pull/${number}`,
+    title,
+    state,
+    mergedAt: state === "MERGED" ? "2026-09-29T17:00:00Z" : null,
+    headRefName: `b-${number}`,
+  });
+
+  test("searches every state by title and keeps only titles that start with `<ID>:`", async () => {
+    const calls: string[][] = [];
+    const rows = [
+      row(1, "TOD-1: Add a timer"),
+      row(2, "TOD-16: Fix the repo path"),
+      row(3, "Follow-up to TOD-1: tidy"),
+      row(4, "TOD-1: Retry", "OPEN"),
+    ];
+    const gh = async (args: string[]) => {
+      calls.push(args);
+      return JSON.stringify(rows);
+    };
+    const found = await findPrsFor(gh, "TOD-1", "/repo");
+    expect(found.map((p) => p.number)).toEqual([1, 4]);
+    expect(found[0]).toEqual({
+      number: 1,
+      url: "https://github.com/example/tod/pull/1",
+      title: "TOD-1: Add a timer",
+      state: "MERGED",
+      mergedAt: "2026-09-29T17:00:00Z",
+    });
+    expect(found[1]?.mergedAt).toBeNull();
+    expect(calls[0]?.slice(0, 5)).toEqual(["pr", "list", "--state", "all", "--search"]);
+    expect(calls[0]?.[5]).toBe("TOD-1 in:title");
   });
 });

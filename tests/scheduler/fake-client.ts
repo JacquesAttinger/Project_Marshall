@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 17:55 CDT
+// Last edited: 2026-09-29 19:20 CDT
 // An in-memory LinearClient for scheduler tests. Keeps each issue's state and agent labels and
 // applies the same claim rules as the real client (unstarted + no agent label = claimable).
 // `tests/linear/fake-linear.ts` fakes the transport instead; this fakes the client.
@@ -68,6 +68,26 @@ export function pickable(overrides: Partial<PickableIssue> = {}): PickableIssue 
   };
 }
 
+/** Done with the agent labels gone. False when the issue was already completed. */
+function completeEntry(entry: FakeIssue): boolean {
+  if (entry.state.type === "completed") return false;
+  entry.state = { name: "Done", type: "completed" };
+  entry.labels = entry.labels.filter((l) => !isAgentLabel(l));
+  return true;
+}
+
+function detailOf(entry: FakeIssue): IssueDetail {
+  const agent = entry.labels.find(isAgentLabel)?.split("/")[1];
+  return {
+    ...entry.issue,
+    labels: entry.labels,
+    state: entry.state,
+    agentId: agent && isAgentId(agent) ? agent : null,
+    latestHumanComment: null,
+    relatedIssueIds: [],
+  };
+}
+
 export function fakeClient(issues: PickableIssue[] = []): FakeLinearClient {
   const map = new Map<string, FakeIssue>();
   for (const issue of issues) {
@@ -92,6 +112,16 @@ export function fakeClient(issues: PickableIssue[] = []): FakeLinearClient {
     async listPickable() {
       calls.push({ method: "listPickable", issueId: "" });
       return [...map.values()].filter((i) => i.state.type === "unstarted").map((i) => i.issue);
+    },
+    async listAwaitingMerge() {
+      calls.push({ method: "listAwaitingMerge", issueId: "" });
+      const names = ["Needs Verification", "Blocked"];
+      return [...map.values()].filter((i) => names.includes(i.state.name)).map((i) => i.issue);
+    },
+    async complete(issueId, opts = {}) {
+      calls.push({ method: "complete", issueId, arg: opts.comment });
+      if (completeEntry(get(issueId)) && opts.comment)
+        comments.push({ issueId, body: opts.comment });
     },
     async claim(issueId, agentId) {
       calls.push({ method: "claim", issueId, arg: agentId });
@@ -127,17 +157,8 @@ export function fakeClient(issues: PickableIssue[] = []): FakeLinearClient {
     async createFollowUp() {
       throw new Error("fake linear: createFollowUp is not part of the scheduler");
     },
-    async getIssue(issueId): Promise<IssueDetail> {
-      const entry = get(issueId);
-      const agent = entry.labels.find(isAgentLabel)?.split("/")[1];
-      return {
-        ...entry.issue,
-        labels: entry.labels,
-        state: entry.state,
-        agentId: agent && isAgentId(agent) ? agent : null,
-        latestHumanComment: null,
-        relatedIssueIds: [],
-      };
+    async getIssue(issueId) {
+      return detailOf(get(issueId));
     },
   };
   return client;

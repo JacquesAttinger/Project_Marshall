@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 01:10 CDT
+// Last edited: 2026-09-29 19:20 CDT
 // Master agent test setup: an in-memory DB, a temp MARSHALL_HOME, a fake clock, and fakes for
 // every injectable seam (runner, waiter, git, gh, the plan and hand-off phases, Linear). Runs are
 // rows the fake runner inserts; a test ends one with `finish(runId, terminal)`.
@@ -60,9 +60,19 @@ export interface PrViewStub {
   statusCheckRollup?: unknown[];
 }
 
+export interface PrListStub {
+  number: number;
+  url: string;
+  title: string;
+  state: string;
+  mergedAt: string | null;
+}
+
 export interface FakeGh {
   calls: string[][];
   views: Map<string, PrViewStub>;
+  /** `gh pr list` rows by issue identifier (`CB-7`); an identifier with no entry has no PRs. */
+  lists: Map<string, PrListStub[]>;
   run(args: string[], cwd: string): Promise<string>;
 }
 
@@ -226,8 +236,13 @@ function makeGh(): FakeGh {
   const gh: FakeGh = {
     calls: [],
     views: new Map(),
+    lists: new Map(),
     async run(args) {
       gh.calls.push(args);
+      if (args[0] === "pr" && args[1] === "list") {
+        const identifier = (args[args.indexOf("--search") + 1] ?? "").split(" ")[0] ?? "";
+        return JSON.stringify(gh.lists.get(identifier) ?? []);
+      }
       if (args[0] === "pr" && args[1] === "view") {
         const stub = gh.views.get(args[2] as string) ?? {};
         return JSON.stringify({

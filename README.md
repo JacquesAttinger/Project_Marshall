@@ -1,4 +1,4 @@
-<!-- Last edited: 2026-09-24 -->
+<!-- Last edited: 2026-09-29 -->
 
 <a id="readme-top"></a>
 
@@ -189,7 +189,7 @@ A tick lists the pickable issues (Todo, assigned to me), orders them by priority
 
 ### Master agent
 
-`src/master-agent.ts` runs one issue through plan → implement → hand-off, enforces the wall-clock limit, resumes a stalled agent, and rebases parked pull requests when a sibling merges.
+`src/master-agent.ts` runs one issue through plan → implement → hand-off, enforces the wall-clock limit, resumes a stalled agent, rebases parked pull requests when a sibling merges, and moves an issue to Done once its pull request merges.
 Every state lives on the claim's row, so `bin/marshall run` after a crash reconciles and continues from where each issue was.
 See [`docs/state_machine.md`](docs/state_machine.md) for the full diagram.
 

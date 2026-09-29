@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:20 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // Shapes for the master agent: the phase states it writes to `claims.state`, the events it
 // records, and the injectable seams (runner, git, gh, phases) so the state machine is tested
 // with fakes and a fake clock, never with a live agent.
@@ -38,6 +38,7 @@ export const MASTER_EVENTS = [
   "crashed",
   "pr_merged",
   "pr_closed",
+  "done",
   "rebase_queued",
   "rebased",
   "rebase_conflict",

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 14:55 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // Typed loaders for marshall.config.json (committed, JSONC: `//` and `/* */` comments allowed)
 // and process.env (from .env).
 
@@ -57,6 +57,8 @@ export const ConfigSchema = z
     planMinutes: positiveInt.default(20),
     /** Hand-off writer wall clock. The writer is read-only, so it should be well under this. */
     handoffMinutes: positiveInt.default(10),
+    /** Minutes between sweeps that mark Done any issue whose PR merged while Marshall missed it. */
+    doneSweepMinutes: positiveInt.default(10),
     /** Pause after a rate limit whose reset time could not be parsed; the probe fires after it. */
     rateLimitProbeMinutes: positiveInt.default(30),
     /**
