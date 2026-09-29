@@ -1,4 +1,4 @@
-// Last edited: 2026-09-29 12:00 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon reads this once at start: after a change, `marshall stop && marshall start`.
 {
@@ -41,6 +41,9 @@
   "planMinutes": 20,
   // Hand-off writer wall clock, in minutes. It is read-only, so it should finish well under this.
   "handoffMinutes": 10,
+  // Minutes between sweeps that move an issue to Done when its PR merged and the merge poll
+  // missed it (Marshall was off, or the claim was gone). Checks Needs Verification and Blocked.
+  "doneSweepMinutes": 10,
   // After a rate limit with no readable reset time: wait this long, then probe again.
   "rateLimitProbeMinutes": 30,
   // File the implementer's "out of scope found" items as Linear issues at hand-off. Off: they

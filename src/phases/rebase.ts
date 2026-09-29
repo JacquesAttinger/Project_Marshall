@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:40 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // Merge detection and rebasing, driven from the claims table on every pulse (spec 5.4). When a
 // Marshall PR merges, every other parked PR is queued (`rebase_after`). One rebase runs at a
 // time, oldest first: `git rebase origin/<base>` + push inline, then CI. Clean and green
@@ -28,6 +28,7 @@ import {
   RELEASED,
 } from "../scheduler/index.ts";
 import { blockIssue } from "../scheduler/tick.ts";
+import { markDone } from "./done.ts";
 import { RESOLVE_STATUS_FILE, resolvePrompt, runName } from "./names.ts";
 import { viewPr } from "./pr.ts";
 
@@ -45,10 +46,32 @@ function cwdOf(ctx: Ctx): string {
   return ctx.claim.worktreePath as string;
 }
 
-async function release(ctx: Ctx, event: "pr_merged" | "pr_closed"): Promise<void> {
+async function release(
+  ctx: Ctx,
+  event: "pr_merged" | "pr_closed",
+  mergedAt: string | null = null,
+): Promise<void> {
   ctx.claim = transitionClaim(ctx, ctx.claim, RELEASED, { prUrl: ctx.claim.prUrl });
   emitMaster(ctx, ctx.claim, event, { prUrl: ctx.claim.prUrl });
   ctx.log.info(`master.${event}`, { issueId: ctx.claim.issueId, prUrl: ctx.claim.prUrl });
+  if (event !== "pr_merged") return;
+  // The claim stays released if Linear fails: the done sweep repairs the issue on its next run.
+  try {
+    const issue = { id: ctx.claim.issueId, identifier: ctx.identifier };
+    await markDone(
+      ctx,
+      issue,
+      ctx.claim.prUrl as string,
+      mergedAt,
+      "merge_poll",
+      ctx.claim.agentId,
+    );
+  } catch (err) {
+    ctx.log.warn("master.done_failed", {
+      issueId: ctx.claim.issueId,
+      error: (err as Error).message,
+    });
+  }
 }
 
 /** A sibling merged: every other parked PR gets `rebase_after` set to it. */
@@ -79,7 +102,7 @@ async function pollMerges(deps: MasterDeps): Promise<void> {
         deps.now(),
       );
       if (view.mergedAt || view.state === "MERGED") {
-        await release(ctx, "pr_merged");
+        await release(ctx, "pr_merged", view.mergedAt);
         queueSiblings(deps, claim.prUrl as string, claim.issueId);
       } else if (view.state === "CLOSED") {
         await release(ctx, "pr_closed");

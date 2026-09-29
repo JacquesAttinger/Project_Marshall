@@ -1,9 +1,9 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // One GraphQL document plus its Zod response schema per Linear operation Marshall uses.
 // Field names follow Linear's public schema. Keep documents minimal: every field costs complexity.
 
 import { z } from "zod";
-import { HUMAN_ONLY_LABEL } from "./map.ts";
+import { BLOCKED_STATE, HUMAN_ONLY_LABEL, NEEDS_VERIFICATION_STATE } from "./map.ts";
 
 export interface Operation<T> {
   name: string;
@@ -122,6 +122,29 @@ query PickableIssues($teamId: ID!, $assigneeId: ID!) {
       assignee: { id: { eq: $assigneeId } }
       state: { type: { eq: "unstarted" } }
       labels: { every: { name: { neq: "${HUMAN_ONLY_LABEL}" } } }
+    }
+    first: 50
+  ) {
+    nodes { ...IssueFields }
+  }
+}`,
+  schema: z.object({ issues: z.object({ nodes: z.array(RawIssueSchema) }) }),
+};
+
+/**
+ * Issues a human has not closed yet whose PR may already be merged: Needs Verification and
+ * Blocked, assigned to Marshall's user. Unlike `PickableIssues` it keeps `human-only` issues,
+ * since a human-only issue is still marked Done when its PR merges.
+ */
+export const ReviewableIssues: Operation<{ issues: { nodes: RawIssue[] } }> = {
+  name: "ReviewableIssues",
+  doc: `${ISSUE_FIELDS}
+query ReviewableIssues($teamId: ID!, $assigneeId: ID!) {
+  issues(
+    filter: {
+      team: { id: { eq: $teamId } }
+      assignee: { id: { eq: $assigneeId } }
+      state: { name: { in: ["${NEEDS_VERIFICATION_STATE}", "${BLOCKED_STATE}"] } }
     }
     first: 50
   ) {

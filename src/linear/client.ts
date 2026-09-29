@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // The one module that talks to Linear. Every read or write Marshall makes goes through LinearClient.
 // Claim lock = state In Progress + one `marshall/agent-<slot>` label. `delegate` waits for the
 // iteration 2 OAuth agent, because the API only accepts agent users there.
@@ -14,6 +14,7 @@ import {
   agentLabelName,
   agentLabelsOf,
   BLOCKED_STATE,
+  DONE_STATE,
   HUMAN_ONLY_LABEL,
   IN_PROGRESS_STATE,
   type IssueDetail,
@@ -32,6 +33,7 @@ import {
   IssueById,
   type Operation,
   PickableIssues,
+  ReviewableIssues,
   type TeamMeta,
   TeamMetaOp,
   UpdateComment,
@@ -60,10 +62,17 @@ export interface LinearClient {
   whoami(): ViewerInfo;
   budget(): RateBudget | null;
   listPickable(): Promise<PickableIssue[]>;
+  /** Needs Verification and Blocked issues assigned to this user: the merge sweep's candidates. */
+  listAwaitingMerge(): Promise<PickableIssue[]>;
   /** True only when this call took the lock. False if someone else holds it or the state moved. */
   claim(issueId: string, agentId: AgentId): Promise<boolean>;
   /** Back to Todo with every agent label removed. Used by reconcile (07) and bounces (08). */
   release(issueId: string, opts?: { comment?: string }): Promise<void>;
+  /**
+   * Done with every agent label removed, then the comment. An issue already completed is left
+   * alone (no state write, no comment), so both merge paths can call it for the same issue.
+   */
+  complete(issueId: string, opts?: { comment?: string }): Promise<void>;
   setState(issueId: string, stateName: string): Promise<void>;
   /** Post a comment with the Marshall footer. The id lets a later `updateComment` edit it. */
   comment(issueId: string, markdown: string): Promise<{ id: string }>;
@@ -114,7 +123,13 @@ export function indexTeam(team: TeamMeta): TeamIndex {
 
 function requireSetup(index: TeamIndex): void {
   const missing: string[] = [];
-  for (const name of [TODO_STATE, IN_PROGRESS_STATE, NEEDS_VERIFICATION_STATE, BLOCKED_STATE]) {
+  for (const name of [
+    TODO_STATE,
+    IN_PROGRESS_STATE,
+    NEEDS_VERIFICATION_STATE,
+    BLOCKED_STATE,
+    DONE_STATE,
+  ]) {
     if (!index.stateIds.has(name)) missing.push(`state "${name}"`);
   }
   for (const name of [AGENT_FILED_LABEL, HUMAN_ONLY_LABEL, ...AGENT_IDS.map(agentLabelName)]) {
@@ -195,6 +210,24 @@ async function release(ctx: Ctx, issueId: string, opts: { comment?: string } = {
   if (opts.comment) await comment(ctx, issueId, opts.comment);
 }
 
+async function complete(ctx: Ctx, issueId: string, opts: { comment?: string } = {}): Promise<void> {
+  const before = (await run(ctx.gql, IssueById, { id: issueId })).issue;
+  if (before.state.type === "completed") {
+    ctx.log.info("linear.complete_skipped", { issueId, state: before.state.name });
+    return;
+  }
+  const removedLabelIds = agentLabelIdsOn(before.labels.nodes);
+  await run(ctx.gql, UpdateIssue, {
+    id: issueId,
+    input: {
+      stateId: ctx.stateId(DONE_STATE),
+      ...(removedLabelIds.length > 0 ? { removedLabelIds } : {}),
+    },
+  });
+  ctx.log.info("linear.completed", { issueId });
+  if (opts.comment) await comment(ctx, issueId, opts.comment);
+}
+
 async function createFollowUp(
   ctx: Ctx,
   originId: string,
@@ -232,8 +265,16 @@ function buildClient(ctx: Ctx): LinearClient {
       });
       return issues.nodes.map(toPickable);
     },
+    listAwaitingMerge: async () => {
+      const { issues } = await run(ctx.gql, ReviewableIssues, {
+        teamId: ctx.teamId,
+        assigneeId: ctx.viewer.userId,
+      });
+      return issues.nodes.map(toPickable);
+    },
     claim: (issueId, agentId) => claim(ctx, issueId, agentId),
     release: (issueId, opts) => release(ctx, issueId, opts),
+    complete: (issueId, opts) => complete(ctx, issueId, opts),
     setState: async (issueId, stateName) => {
       await run(ctx.gql, UpdateIssue, { id: issueId, input: { stateId: ctx.stateId(stateName) } });
       ctx.log.info("linear.state_set", { issueId, state: stateName });

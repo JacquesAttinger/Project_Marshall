@@ -1,10 +1,10 @@
 # Master agent — state machine
 
-<!-- Last edited: 2026-09-21 14:55 CDT -->
+<!-- Last edited: 2026-09-29 19:40 CDT -->
 
 **TLDR:** One `MasterAgent` per claimed issue runs plan → implement → hand-off and then parks the claim while a human looks at the PR.
 Every state is a value of `claims.state`, so a restart of the orchestrator rebuilds each agent from its row.
-The pulse, which runs before every scheduler tick, is what enforces the clock, catches stalls, wakes rate-limited agents, and rebases parked PRs when a sibling merges.
+The pulse, which runs before every scheduler tick, is what enforces the clock, catches stalls, wakes rate-limited agents, rebases parked PRs when a sibling merges, and moves an issue to Done when its PR merges.
 Every failure path ends in exactly one terminal state with exactly one terminal event.
 
 ## States
@@ -66,9 +66,10 @@ Then, for each live agent, in this order:
 
 Then the rebase machinery, over the claims table (`src/phases/rebase.ts`):
 
-4. **Merge poll.** One `gh pr view --json mergedAt,state,statusCheckRollup` per parked PR. Merged → `released` + `pr_merged`, and every other parked PR gets `rebase_after` = the merged PR (`rebase_queued`). Closed → `released` + `pr_closed`.
+4. **Merge poll.** One `gh pr view --json mergedAt,state,statusCheckRollup` per parked PR. Merged → `released` + `pr_merged`, then the issue goes to Done with one comment and a `done` event (`source: merge_poll`); a Linear failure is logged (`master.done_failed`) and leaves the claim released for the sweep. Every other parked PR gets `rebase_after` = the merged PR (`rebase_queued`). Closed → `released` + `pr_closed`, and the issue is not marked Done.
 5. **The one in flight.** At most one claim is `rebasing` or `resolving`. Rebasing: CI green → hand-off re-posted with the badge `rebased after <PR>` → `awaiting_human` + `rebased`; CI red → a resolver if a slot is free. Resolving: the run's `Stop` → `resolve.json` says `green` and CI agrees → same landing; anything else → `blocked`, with the worktree put back to the pushed tip.
 6. **The next one.** No claim in flight → the oldest `awaiting_human` with `rebase_after`: `git fetch`, `git rebase origin/<base>`, `git push --force-with-lease` → `rebasing`. A conflict → `rebase_conflict`, then a resolver run (`/marshall:resolve-conflicts <plan> <ID> conflict`) if `lowestFreeSlot` finds one; else `git rebase --abort` and the same claim is tried next tick.
+7. **Done sweep.** Every `doneSweepMinutes` (flag `done_sweep_at`, default 10), `src/phases/done.ts` lists this user's Needs Verification and Blocked issues. One `gh pr list --state all --search "<ID> in:title"` per issue keeps the PRs whose title starts with `<ID>:`. One merged and none open → Done + `done` (`source: sweep`). An issue whose claim is anything but `released` or `blocked` is skipped, and an issue already in a completed state is left alone. It catches merges the poll missed: Marshall was off, or the claim was reused for a re-run and lost its old PR URL.
 
 A resolver takes a concurrency slot through the partial index but writes no `starts` row: it counts against `maxAgents`, never against the daily or window caps.
 
@@ -91,6 +92,7 @@ Step 09 maps `finished`, `blocked`, `over_budget`, `crashed`, `rate_limited`, `r
 | `rate_limited` | a run ended with `StopFailure rate_limit` | `until`, `parsed` (true when "Resets at" was read), `details` |
 | `rate_limit_resumed` | the pause ended and the phase probed | — |
 | `pr_merged`, `pr_closed` | the merge poll saw it | `prUrl` |
+| `done` | the issue was set to Done after its PR merged | `prUrl`, `source: merge_poll \| sweep` |
 | `rebase_queued` | a sibling merged | `after` |
 | `rebased` | the rebased PR is green and re-posted | `badge`, `posted`, `requeued` |
 | `rebase_conflict` | the inline rebase conflicted, or CI went red after it | `kind: conflict \| ci_red`, `after` |

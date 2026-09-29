@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-09-29 19:05 CDT
 // Pure mappers from Linear's raw issue shape to Marshall's types. No fetch, so tests hit them directly.
 
 import type { RawIssue, RawIssueDetail } from "./queries.ts";
@@ -16,6 +16,8 @@ export const IN_PROGRESS_STATE = "In Progress";
 export const TODO_STATE = "Todo";
 /** Where the scheduler parks an issue that bounced too often (step 07) or an agent that gave up (step 08). */
 export const BLOCKED_STATE = "Blocked";
+/** Where an issue lands once its PR has merged. */
+export const DONE_STATE = "Done";
 
 /** Agents act as the same Linear user as the human, so this footer is how the two are told apart. */
 export const MARSHALL_COMMENT_FOOTER = "\n\n_— Marshall_";

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 02:05 CDT
+// Last edited: 2026-09-29 19:25 CDT
 // Merge detection and the serial rebase queue (spec 5.4, decision 2), driven through the pulse
 // over seeded parked claims: a sibling merge queues the others; a clean rebase re-posts the
 // hand-off with a badge; a conflict or red CI takes a slot for a resolver run; one at a time.
@@ -78,7 +78,7 @@ describe("merge detection", () => {
       rebaseAfter: PR(1),
     });
     expect(getClaim(h.db, "issue-3")).toMatchObject({ state: "rebasing", rebaseAfter: PR(1) });
-    expect(masterEvents(h.db, "issue-1")).toEqual(["phase_changed", "pr_merged"]);
+    expect(masterEvents(h.db, "issue-1")).toEqual(["phase_changed", "pr_merged", "done"]);
     expect(masterEvents(h.db, "issue-2")).toEqual(["rebase_queued"]);
     // Serial: CB-3 is still rebasing, so CB-2 waits.
     expect(h.git.calls.filter((c) => c.op === "rebase")).toHaveLength(0);
