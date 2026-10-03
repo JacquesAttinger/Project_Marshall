@@ -1,9 +1,9 @@
 # Marshall runbook
 
-<!-- Last edited: 2026-09-21 15:10 CDT -->
+<!-- Last edited: 2026-10-03 18:31 CDT -->
 
 **TLDR:** Marshall runs as a launchd agent on the desk laptop.
-`scripts/install-launchd.sh` installs it, `marshall status` shows what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
+`scripts/install-launchd.sh` installs it, `marshall status` and the dashboard show what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
 Everything Marshall writes lives under `~/.marshall`.
 This page says how to install it, read it, stop it, and repair it by hand.
 
@@ -15,9 +15,12 @@ Once per machine, from the repo:
 cp .env.example .env            # fill in MARSHALL_LINEAR_API_KEY and NTFY_TOPIC_PREFIX
 bun install
 bun bin/marshall db migrate
-bash scripts/install-launchd.sh
+bash scripts/install-launchd.sh # daemon and dashboard; `daemon` or `dashboard` for one
 marshall status                 # Daemon: launchd running (pid N), orchestrator alive
 ```
+
+Run the install script from the main checkout, never from a worktree: the plist points at the script's own repo, so a worktree run would point the real daemon at a feature branch.
+The script refuses to run under `.worktrees/`.
 
 The script renders `scripts/launchd/com.jacques.marshall.plist.template` with this machine's `bun`, the repo path, and `$HOME`, writes `~/Library/LaunchAgents/com.jacques.marshall.plist`, and bootstraps it.
 The plist runs `caffeinate -i bun bin/marshall run` with the repo as the working directory (so Bun loads `.env`), `KeepAlive` (a crash restarts it after 30 s), and `RunAtLoad` (login and reboot start it).
@@ -26,7 +29,7 @@ Rerun the script after moving the repo or changing the template; it boots the ol
 
 `marshall` on `PATH`: `bun link` in the repo, or call `bun bin/marshall ...`.
 
-Uninstall: `bash scripts/uninstall-launchd.sh`.
+Uninstall: `bash scripts/uninstall-launchd.sh daemon` (or `dashboard`, or `all`).
 State under `~/.marshall` stays.
 
 ## Start, stop, pause, resume, kill
@@ -37,7 +40,7 @@ State under `~/.marshall` stays.
 | `marshall stop` | `launchctl bootout`. The daemon exits; live agent jobs keep running under the Claude daemon, and the next start's reconcile attaches to them. A reboot re-loads the plist on its own. |
 | `marshall pause` | No new issues start. Running agents finish their issue. Independent of the rate-limit pause: a rate-limit resume never clears it. |
 | `marshall resume` | Clears the manual pause. Mentions a rate-limit pause that is still in effect. |
-| `marshall kill <ID>` | Stops one issue's agent and marks the issue Blocked (with a `blocked` push). With a live orchestrator this writes a flag its next pulse executes (within `pollSeconds`). Without one, it kills the runs and blocks the issue itself, which needs the Linear key. |
+| `marshall kill <ID>` | Stops one issue's agent and marks the issue Blocked (with a `blocked` push). With a live orchestrator (its pidfile, or launchd reports it running) this writes a flag its next pulse executes (within `pollSeconds`). Without one, it kills the runs and blocks the issue itself, which needs the Linear key. A conflict resolver cannot be killed through the flag: `marshall stop` first, then `kill`. The dashboard's Kill button does the same. |
 | `marshall run` | The daemon in the foreground, for a terminal session. `--once` does one reconcile, pulse, tick, and notify tick, then exits. |
 
 The daemon writes `~/.marshall/marshall.pid` and removes it on a clean exit.
@@ -64,6 +67,23 @@ It does nothing to an issue Marshall has already claimed — add it before the c
 `marshall logs` tails `~/.marshall/logs/marshall.log` (JSONL, one event per line).
 `marshall logs <ID>` prints the newest run for that issue, its transcript path, and hands the terminal to `claude logs <jobId>`.
 `claude agents` is the daemon's own view of the background jobs.
+
+## Dashboard
+
+`marshall dashboard` serves a web page on `127.0.0.1:<dashboardPort>` (default `7474`): the status strip, the "needs you" cards with the hand-off, one panel per agent with a two-tap Kill, and the queue.
+`docs/dashboard.md` says what each section means and how to open it on the phone through Tailscale.
+
+It is its own launchd job, `com.jacques.marshall-dashboard`: `bash scripts/install-launchd.sh dashboard` installs it, and `marshall start` / `stop` leave it alone.
+When the daemon is down, the page stays up and says "Daemon down".
+Its logs are `~/.marshall/logs/dashboard.{out,err}.log`.
+
+After you pull new code, restart it so it serves the new version:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.jacques.marshall-dashboard
+```
+
+It reads `marshall.config.json` once at start, so restart it after a config change too.
 
 ## Where state lives
 

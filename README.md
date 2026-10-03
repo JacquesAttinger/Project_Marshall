@@ -1,4 +1,4 @@
-<!-- Last edited: 2026-09-29 -->
+<!-- Last edited: 2026-10-03 -->
 
 <a id="readme-top"></a>
 
@@ -201,6 +201,7 @@ See [`docs/state_machine.md`](docs/state_machine.md) for the full diagram.
 - [`docs/planning.md`](docs/planning.md) — planning phase: the brief, the skill, the classifier, the post-run checks.
 - [`docs/isolation.md`](docs/isolation.md) — slot → Compose project → ports, and how the env reaches an agent.
 - [`docs/handoff_template.md`](docs/handoff_template.md) — what each of the six hand-off sections is for.
+- [`docs/dashboard.md`](docs/dashboard.md) — the web dashboard: what each section means, Kill, and phone access over Tailscale.
 - [`plugin/README.md`](plugin/README.md) — the skills agents run, and how to try them by hand.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -209,7 +210,8 @@ See [`docs/state_machine.md`](docs/state_machine.md) for the full diagram.
 ## Roadmap
 
 - [x] Iteration 1 — Linear autopilot on one repo: poller, planner, implementer, reviewer, hand-off package, ntfy.sh push
-- [ ] Iteration 2 — Web dashboard (queue, hand-off cards, kill switch), raise the agent cap, Linear OAuth status
+- [x] Iteration 2 — Web dashboard (queue, hand-off cards, kill switch): `marshall dashboard`, see [`docs/dashboard.md`](docs/dashboard.md)
+- [ ] Iteration 2 — Raise the agent cap, Linear OAuth status
 - [ ] Iteration 3 — Voice intake: an iOS Shortcut turns a spoken note into a well-formed Linear issue
 - [ ] Iteration 4 — Marshall proper: open-ended goals split into issues on their own, two-way chat instead of a CLI, an always-on machine
 - [ ] Later — a Testing agent that scans the repo, finds bugs on its own, and proposes fixes the same way the Innovate agent proposes features
