@@ -1,6 +1,6 @@
-// Last edited: 2026-09-19 21:28 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // Enforce the global size policy: 500 lines per file, 75 lines per function.
-// Usage: bun scripts/check-size.ts [file...]   (no args = every .ts under src, scripts, tests, bin)
+// Usage: bun scripts/check-size.ts [file...]   (no args = every .ts and .js under src, scripts, tests, bin)
 
 import { readFileSync } from "node:fs";
 import { relative } from "node:path";
@@ -74,12 +74,12 @@ export function formatViolation(v: SizeViolation): string {
 }
 
 async function defaultFiles(): Promise<string[]> {
-  const glob = new Bun.Glob("{src,scripts,tests,bin}/**/*.ts");
+  const glob = new Bun.Glob("{src,scripts,tests,bin}/**/*.{ts,js}");
   return Array.from(glob.scanSync({ cwd: process.cwd() })).sort();
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2).filter((a) => a.endsWith(".ts"));
+  const args = process.argv.slice(2).filter((a) => /\.(ts|js)$/.test(a));
   const files = args.length > 0 ? args : await defaultFiles();
   const violations = files.flatMap((f) =>
     checkSource(relative(process.cwd(), f), readFileSync(f, "utf8")),
