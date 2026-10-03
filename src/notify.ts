@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:50 CDT
+// Last edited: 2026-10-03 18:12 CDT
 // ntfy pushes for the six master events that need a human (spec 7, 9). A tailer over the `events`
 // table with a persisted cursor: nothing calls it from `emit()`, so the state machine stays
 // pure over the DB and a push that fails never touches a claim. One topic per agent slot,
@@ -6,6 +6,7 @@
 
 import type { Database } from "bun:sqlite";
 import type { Env } from "./config.ts";
+import { linearIssueUrl } from "./linear/url.ts";
 import type { Logger } from "./log.ts";
 import { getFlag, setFlag } from "./scheduler/store.ts";
 
@@ -111,7 +112,7 @@ export function mapEvent(row: EventRow, opts: TopicOpts): Push | null {
     priority: spec.priority,
   };
   if (spec.link && row.identifier) {
-    push.click = `https://linear.app/${opts.workspace}/issue/${row.identifier}`;
+    push.click = linearIssueUrl(opts.workspace, row.identifier);
   }
   return push;
 }

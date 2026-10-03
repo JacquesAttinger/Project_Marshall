@@ -1,4 +1,4 @@
-// Last edited: 2026-09-29 19:05 CDT
+// Last edited: 2026-10-03 18:12 CDT
 // Merge detection and rebasing, driven from the claims table on every pulse (spec 5.4). When a
 // Marshall PR merges, every other parked PR is queued (`rebase_after`). One rebase runs at a
 // time, oldest first: `git rebase origin/<base>` + push inline, then CI. Clean and green
@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { setPause } from "../caps.ts";
 import { implementModel } from "../config.ts";
 import { implementEnv } from "../isolation.ts";
+import { linearIssueUrl } from "../linear/url.ts";
 import { emitMaster, transitionClaim } from "../master/events.ts";
 import { pauseUntilFor } from "../master/ratelimit.ts";
 import { type MasterDeps, RESOLVING } from "../master/types.ts";
@@ -203,7 +204,7 @@ async function startResolver(ctx: Ctx, mode: "conflict" | "ci"): Promise<boolean
   }
   rmSync(resolveStatusPath(ctx.identifier), { force: true });
   rmSync(`${resolveStatusPath(ctx.identifier)}.stop-blocks`, { force: true });
-  const issueUrl = `https://linear.app/${ctx.config.workspace}/issue/${ctx.identifier}`;
+  const issueUrl = linearIssueUrl(ctx.config.workspace, ctx.identifier);
   try {
     await ctx.runner.launch(ctx.db, {
       name: runName(ctx.identifier, "resolve"),
