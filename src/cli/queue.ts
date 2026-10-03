@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:28 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // `marshall queue [--json]` — a dry run of one scheduler tick. Prints the ordered pickable list and,
 // for each issue, what the next tick would do with it and why. Reads Linear and the DB; writes nothing.
 
@@ -53,7 +53,8 @@ export interface QueueReport {
 export interface QueueDeps {
   db: Database;
   config: Config;
-  linear: LinearClient;
+  /** Only the pickable list is read, so the dashboard can pass its cached copy. */
+  linear: Pick<LinearClient, "listPickable">;
   now: () => Date;
 }
 
