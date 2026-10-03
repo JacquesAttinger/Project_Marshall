@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 15:25 CDT
+// Last edited: 2026-10-03 18:42 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
@@ -8,6 +8,7 @@ import {
   briefsDir,
   claudeHome,
   claudeJobsDir,
+  defaultMarshallHome,
   ensureHome,
   eventsDir,
   handoffDir,
@@ -15,6 +16,7 @@ import {
   handoffPath,
   issueDir,
   issuesDir,
+  marshallHome,
   transcriptPath,
 } from "../src/paths.ts";
 import { type TempHome, useTempHome } from "./helpers.ts";
@@ -31,6 +33,15 @@ afterEach(() => {
   if (previousClaudeDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = previousClaudeDir;
   home.restore();
+});
+
+describe("marshallHome", () => {
+  test("MARSHALL_HOME wins; unset falls back to ~/.marshall, the launchd daemon's root", () => {
+    expect(marshallHome()).toBe(home.dir);
+    expect(defaultMarshallHome()).toBe(join(homedir(), ".marshall"));
+    delete process.env.MARSHALL_HOME;
+    expect(marshallHome()).toBe(defaultMarshallHome());
+  });
 });
 
 describe("claudeHome", () => {
