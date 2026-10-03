@@ -1,6 +1,6 @@
 # Master agent — state machine
 
-<!-- Last edited: 2026-09-29 19:40 CDT -->
+<!-- Last edited: 2026-10-03 18:25 CDT -->
 
 **TLDR:** One `MasterAgent` per claimed issue runs plan → implement → hand-off and then parks the claim while a human looks at the PR.
 Every state is a value of `claims.state`, so a restart of the orchestrator rebuilds each agent from its row.
@@ -83,7 +83,7 @@ Step 09 maps `finished`, `blocked`, `over_budget`, `crashed`, `rate_limited`, `r
 | `phase_changed` | every state write | `from`, `to`, plus the transition's detail (`mode`, `until`, `badge`, `slot`, ...) |
 | `finished` | the hand-off is posted and the issue is in Needs Verification | `prUrl`, `handoffPath`, `round`, `followups` (count filed) |
 | `followup_filed` | one per follow-up issue created, so a bounce never files a title twice | `title`, `identifier`, `url` |
-| `blocked` | terminal: the implementer gave up (`review_exhausted`, `tests_red`, `blocked`), the resumes and the fresh restart are spent (`exhausted`), a phase failed for good, or a rebase could not be recovered | `why`, `bounces`, `branch` |
+| `blocked` | terminal: the implementer gave up (`review_exhausted`, `tests_red`, `blocked`), the resumes and the fresh restart are spent (`exhausted`), a phase failed for good, or a rebase could not be recovered | `why`, `bounces`, `branch`, `comment` (the sentence posted to Linear; the dashboard shows it as the block reason; absent on rows before 2026-10-03) |
 | `over_budget` | terminal: the 2-hour clock | same as `blocked` |
 | `crashed` | terminal: the driver threw | same as `blocked` |
 | `stalled` | the pulse killed a run with no activity for `stallMinutes` | `runId`, `state` |

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-10-03 18:22 CDT
 // One pass of the scheduler: order the pickable issues and start what the caps allow. Each start
 // writes a `claiming` row before it touches Linear, so a crash in the middle leaves a row reconcile
 // can repair instead of an issue that is In Progress and invisible.
@@ -57,7 +57,8 @@ function skipped(
 /**
  * Park the issue in Blocked: back to Todo first so every agent label comes off (a human who moves
  * it to Todo later must be able to hand it back), then Blocked, then the local row. One event,
- * `scheduler.blocked` by default; the master agent passes its own terminal event type.
+ * `scheduler.blocked` by default; the master agent passes its own terminal event type. The event
+ * keeps the comment too, so the dashboard can show the block reason without asking Linear.
  */
 export async function blockIssue(
   deps: Pick<SchedulerDeps, "db" | "linear" | "log" | "now">,
@@ -75,6 +76,7 @@ export async function blockIssue(
     why,
     bounces: claim.bounces,
     branch: claim.branch,
+    comment,
   });
   deps.log.warn(eventType, { issueId: issue.id, identifier: issue.identifier, why });
 }

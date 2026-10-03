@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:40 CDT
+// Last edited: 2026-10-03 18:22 CDT
 // Row helpers for `claims`, `starts`, `events`, and `flags`. All scheduler SQL lives here.
 
 import type { Database } from "bun:sqlite";
@@ -277,6 +277,43 @@ export function insertEvent(
     type,
     JSON.stringify(payload),
   ]);
+}
+
+/** Every event type `blockIssue` writes: the scheduler's own and the master agent's three. */
+export const BLOCK_EVENT_TYPES: readonly string[] = [
+  "scheduler.blocked",
+  "master.blocked",
+  "master.over_budget",
+  "master.crashed",
+];
+
+export interface BlockEvent {
+  type: string;
+  ts: string;
+  /** The short code (`killed`, `missing_sections`, `review_exhausted`, ...). */
+  why: string | null;
+  /** The sentence posted to Linear. Absent on rows written before 2026-10-03. */
+  comment: string | null;
+}
+
+/** The newest block event for an issue (Linear UUID), or null. Uses the `events_issue` index. */
+export function latestBlockEvent(db: Database, issueId: string): BlockEvent | null {
+  const marks = BLOCK_EVENT_TYPES.map(() => "?").join(", ");
+  const row = db
+    .query<{ type: string; ts: string; payload: string | null }, string[]>(
+      `SELECT type, ts, payload FROM events WHERE issue_id = ? AND type IN (${marks})
+       ORDER BY ts DESC, id DESC LIMIT 1`,
+    )
+    .get(issueId, ...BLOCK_EVENT_TYPES);
+  if (!row) return null;
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = JSON.parse(row.payload ?? "{}") as Record<string, unknown>;
+  } catch {
+    // A malformed payload still tells when and how; the reason falls back to plain words.
+  }
+  const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+  return { type: row.type, ts: row.ts, why: str(payload.why), comment: str(payload.comment) };
 }
 
 export function getFlag(db: Database, key: string): string | null {
