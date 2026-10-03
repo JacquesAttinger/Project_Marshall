@@ -1,6 +1,7 @@
-// Last edited: 2026-09-29 19:05 CDT
+// Last edited: 2026-10-03 18:45 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
-// The daemon reads this once at start: after a change, `marshall stop && marshall start`.
+// The daemon and the dashboard each read this once at start: after a change, restart them
+// (`marshall stop && marshall start`; the dashboard's restart is in docs/runbook.md).
 {
   // --- Where the work comes from and where it lands ---
   // Linear workspace slug. The Linear key in .env must belong to it, or Marshall refuses to run.
@@ -69,5 +70,9 @@
   // Slot N gets base + N * portOffsetPerSlot: with { "POSTGRES_HOST_PORT": 5432 }, slot 0 -> 5432,
   // slot 1 -> 5532, and so on. Empty: TickTick has no Compose file yet.
   "services": {},
-  "portOffsetPerSlot": 100
+  "portOffsetPerSlot": 100,
+
+  // --- The dashboard (`marshall dashboard`, docs/dashboard.md) ---
+  // Port on 127.0.0.1 only. The phone reaches it through `tailscale serve --bg <port>`.
+  "dashboardPort": 7474
 }

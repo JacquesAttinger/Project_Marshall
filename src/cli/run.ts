@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 01:20 CDT
+// Last edited: 2026-10-03 18:45 CDT
 // `marshall run [--once]` — the orchestrator: reconcile, then loop with the real master agent
 // hooks until SIGINT or SIGTERM. `--once` does one reconcile + tick + pulse + notify tick and
 // exits, for a manual check. launchd runs this command (scripts/launchd/); it rotates the logs
@@ -36,8 +36,8 @@ export function rotateLogs(): string[] {
   return [logPath(), out, err].filter((path) => rotateLog(path));
 }
 
-/** Resolves on the first SIGINT or SIGTERM. */
-function untilSignal(): Promise<string> {
+/** Resolves on the first SIGINT or SIGTERM. `marshall dashboard` waits on it too. */
+export function untilSignal(): Promise<string> {
   return new Promise((resolve) => {
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.once(signal, () => resolve(signal));

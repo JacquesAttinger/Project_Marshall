@@ -1,4 +1,4 @@
-// Last edited: 2026-09-29 19:05 CDT
+// Last edited: 2026-10-03 18:45 CDT
 // Typed loaders for marshall.config.json (committed, JSONC: `//` and `/* */` comments allowed)
 // and process.env (from .env).
 
@@ -74,6 +74,8 @@ export const ConfigSchema = z
      */
     services: z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), port).default({}),
     portOffsetPerSlot: positiveInt.default(100),
+    /** The dashboard's port on 127.0.0.1. `tailscale serve` forwards the tailnet to it. */
+    dashboardPort: port.default(7474),
   })
   .strict();
 

@@ -1,4 +1,4 @@
-// Last edited: 2026-09-22 12:44 CDT
+// Last edited: 2026-10-03 18:45 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -50,6 +50,7 @@ describe("parseConfig", () => {
     expect(config.planMinutes).toBe(20);
     expect(config.handoffMinutes).toBe(10);
     expect(config.rateLimitProbeMinutes).toBe(30);
+    expect(config.dashboardPort).toBe(7474);
     expect(config.models).toEqual({
       classifier: "haiku",
       planSimple: "opus",
