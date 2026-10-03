@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:27 CDT
+// Last edited: 2026-10-03 18:34 CDT
 // The queue: the pickable issues in pickup order and what the next tick does with each, from the
 // structured status codes (never by parsing the reason text).
 
@@ -41,7 +41,7 @@ export function renderQueue(queue: QueueData, workspace: string, now: Date): Saf
   const head = html`<h2>Queue${queue.report && html` <span class="count">${queue.report.rows.length}</span>`}</h2>`;
   const stale =
     queue.error &&
-    html`<p class="note note-warn">Linear: ${queue.error}.${queue.report && queue.fetchedAt && html` Showing the list from ${formatClock(queue.fetchedAt, now)}.`}</p>`;
+    html`<p class="note note-warn note-section">Linear: ${queue.error}.${queue.report && queue.fetchedAt && html` Showing the list from ${formatClock(queue.fetchedAt, now)}.`}</p>`;
   if (!queue.report) return html`${head}${stale}`;
   const { rows, counts } = queue.report;
   if (rows.length === 0) return html`${head}${stale}<p class="empty">Nothing pickable.</p>`;

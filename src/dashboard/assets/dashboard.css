@@ -1,4 +1,4 @@
-/* Last edited: 2026-10-03 18:27 CDT
+/* Last edited: 2026-10-03 18:34 CDT
    The dashboard's only stylesheet. Phone first: one column with a 16 px gutter, two columns from
    960 px (Needs you left; Agents and Queue right). Light and dark follow the system. State colors:
    amber = needs you, red = blocked or an armed Kill, green = running. */
@@ -16,6 +16,8 @@
   --warn-bg: #fdf1d8;
   --bad: #b42318;
   --bad-bg: #fde7e5;
+  /* A filled red that keeps white text readable: the armed Kill button. */
+  --bad-solid: #b42318;
   --run: #2c5aa0;
   --run-bg: #e5edfa;
   --code-bg: #eef0f3;
@@ -37,6 +39,7 @@
     --warn-bg: #3a2c0d;
     --bad: #ff8a80;
     --bad-bg: #3d1614;
+    --bad-solid: #c9372c;
     --run: #8fb4ff;
     --run-bg: #17284a;
     --code-bg: #232932;
@@ -308,6 +311,20 @@ h2 {
   color: var(--warn);
 }
 
+/* Short commands in a note stay on one line. */
+.note code {
+  white-space: nowrap;
+}
+
+/* A note under a section heading, above its cards. */
+.note-section {
+  margin: 0 0 10px;
+}
+
+.reason p {
+  margin: 0 0 4px;
+}
+
 .tldr {
   margin-top: 8px;
   font-size: 14px;
@@ -404,8 +421,8 @@ summary {
 }
 
 .kill.armed {
-  background: var(--bad);
-  border-color: var(--bad);
+  background: var(--bad-solid);
+  border-color: var(--bad-solid);
   color: #fff;
 }
 

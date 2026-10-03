@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:27 CDT
+// Last edited: 2026-10-03 18:34 CDT
 // The "needs you" cards: issues waiting on a person. A Needs Verification card shows the
 // hand-off's TLDR and opens the full package on demand; a Blocked card shows why.
 
@@ -14,7 +14,10 @@ const STATE_LABELS: Record<string, [string, string]> = {
 };
 
 function body(card: NeedsYouCard): SafeHtml {
-  if (card.state === BLOCKED) return html`<p class="reason">${card.blockReason}</p>`;
+  if (card.state === BLOCKED) {
+    // Marshall's Linear comment is Markdown; render it through the same sanitizer as the hand-off.
+    return html`<div class="reason">${renderMarkdown(card.blockReason ?? "")}</div>`;
+  }
   if (card.state !== AWAITING_HUMAN) {
     return html`<p class="reason">Rebased on the base branch and pushed; waiting on CI.</p>`;
   }
@@ -47,7 +50,7 @@ export function renderNeedsYou(
 ): SafeHtml {
   const unchecked =
     !section.checkedAgainstLinear &&
-    html`<p class="note">Not checked against Linear (${linearError ?? "not loaded"}), so issues that are already Done may show.</p>`;
+    html`<p class="note note-section">Not checked against Linear (${linearError ?? "not loaded"}), so issues that are already Done may show.</p>`;
   const cards =
     section.cards.length === 0
       ? html`<p class="empty">Nothing needs you.</p>`

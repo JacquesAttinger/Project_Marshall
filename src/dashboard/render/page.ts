@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:27 CDT
+// Last edited: 2026-10-03 18:34 CDT
 // The page shell and the four swappable sections. `GET /` renders the whole page; `GET /sections`
 // returns the same four sections as HTML strings plus a hash each, so the client swaps only the
 // ones that changed. No inline script or style anywhere: the CSP allows only /assets.
@@ -27,8 +27,9 @@ function noDbSections(view: Extract<DashboardView, { kind: "no_db" }>): Sections
     strip:
       html`<div class="pills">${daemonPill(view.daemonRunning)}<span class="pill pill-warn">Database not ready</span></div>`
         .value,
-    needsYou: html`<h2>Needs you</h2><p class="note note-warn">${NO_DB_TEXT[view.problem]}</p>`
-      .value,
+    needsYou:
+      html`<h2>Needs you</h2><p class="note note-warn note-section">${NO_DB_TEXT[view.problem]}</p>`
+        .value,
     agents: waiting("Agents"),
     queue: waiting("Queue"),
   };

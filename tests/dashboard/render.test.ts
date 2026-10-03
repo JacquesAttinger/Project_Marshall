@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:27 CDT
+// Last edited: 2026-10-03 18:34 CDT
 // The dashboard's pure templates: escaping, the hand-off sanitizer, every empty state, each card
 // and panel variant, every queue status code, and the page shell's CSP-friendly markup.
 
@@ -167,6 +167,13 @@ describe("renderNeedsYou", () => {
       renderNeedsYou({ cards: [blocked, rebasing], checkedAgainstLinear: false }, NOW, "timeout"),
     );
     expect(out).toContain("Stopped on request (Kill).");
+    const md = card({
+      state: "blocked",
+      blockReason: "`AlarmTests` timed out. <script>x</script>",
+    });
+    const rendered = String(renderNeedsYou({ cards: [md], checkedAgainstLinear: true }, NOW, null));
+    expect(rendered).toContain("<code>AlarmTests</code>");
+    expect(rendered).not.toContain("<script>");
     expect(out).toContain("waiting on CI");
     expect(out).toContain("Not checked against Linear (timeout)");
     expect(out).not.toContain("<details");
