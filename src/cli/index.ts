@@ -1,7 +1,8 @@
-// Last edited: 2026-09-21 01:10 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // Hand-rolled dispatch. No CLI dependency. `bin/marshall` imports this file.
 
 import { runStart, runStop } from "./daemon.ts";
+import { runDashboard } from "./dashboard.ts";
 import { runMigrate } from "./db.ts";
 import { runHandoffCheck } from "./handoff.ts";
 import { runKill } from "./kill.ts";
@@ -36,6 +37,8 @@ Commands:
                       issue would or would not start now. Never writes.
   run [--once]        Run the orchestrator: reconcile, then poll Linear and drive the master
                       agents until Ctrl-C. --once does one reconcile + tick and exits.
+  dashboard           Serve the web dashboard on 127.0.0.1:<dashboardPort> until Ctrl-C
+                      (docs/dashboard.md; launchd runs it as its own job)
 
 Options:
   --config <path>     Config file (default: MARSHALL_CONFIG or ./marshall.config.json)
@@ -127,6 +130,10 @@ const COMMANDS: Record<string, Command> = {
   queue: {
     arity: 0,
     run: async (args) => void (await runQueue({ json: args.json, configPath: args.configPath })),
+  },
+  dashboard: {
+    arity: 0,
+    run: async (args) => void (await runDashboard({ configPath: args.configPath })),
   },
   run: {
     arity: 0,

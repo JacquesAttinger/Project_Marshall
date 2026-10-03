@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-10-03 18:27 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { setPause } from "../../src/caps.ts";
@@ -74,6 +74,12 @@ describe("collectQueue", () => {
     ]);
     // The daily and window caps do not apply to bounces; the one free slot goes to CB-4.
     expect(report.rows.map((r) => r.slot)).toEqual([null, null, 1, null]);
+    expect(report.rows.map((r) => r.status)).toEqual([
+      "live",
+      "bounce_limit",
+      "next_start",
+      "slots_full",
+    ]);
   });
 
   test("reports the pause and the window opening time", async () => {
@@ -83,6 +89,24 @@ describe("collectQueue", () => {
     const report = await collectQueue(h.deps);
     expect(report.pausedUntil).toBe(until.toISOString());
     expect(report.rows[0]?.reasons).toEqual([`paused until ${until.toISOString()}`]);
+    expect(report.rows[0]?.status).toBe("rate_limited");
+  });
+});
+
+describe("collectQueue: status codes", () => {
+  test("a fresh issue past the daily or window cap gets that code", async () => {
+    h = makeHarness({ issues: [pickable({ identifier: "CB-1" })], config: { dailyStartCap: 9 } });
+    for (let i = 0; i < 2; i++) {
+      h.db.run("INSERT INTO starts (issue_id, started_at) VALUES (?, ?)", [
+        `x${i}`,
+        NOW.toISOString(),
+      ]);
+    }
+    expect((await collectQueue(h.deps)).rows[0]?.status).toBe("window_cap");
+    h.close();
+    h = makeHarness({ issues: [pickable({ identifier: "CB-1" })], config: { dailyStartCap: 1 } });
+    h.db.run("INSERT INTO starts (issue_id, started_at) VALUES ('x', ?)", [NOW.toISOString()]);
+    expect((await collectQueue(h.deps)).rows[0]?.status).toBe("daily_cap");
   });
 });
 
@@ -99,6 +123,7 @@ describe("collectQueue: human-only label", () => {
         kind: "human_only",
         wouldStart: false,
         reasons: ["human-only label: Marshall never picks this up"],
+        status: "human_only",
       },
     ]);
   });

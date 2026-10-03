@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-10-03 18:15 CDT
 // Three sources of truth, joined: `claude agents --json` (alive?), the transcript's mtime and the
 // newest hook event (still working?), and the daemon's state.json (ids, timestamps, tokens).
 
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { claudeJobsDir, transcriptPath } from "../paths.ts";
 import { runClaude } from "./claude.ts";
 import { getRun, isTerminal, newestHookEventAt } from "./store.ts";
-import { RunnerError, type RunStatus } from "./types.ts";
+import { type Run, RunnerError, type RunStatus } from "./types.ts";
 
 /** The subset of `~/.claude/jobs/<id>/state.json` that Marshall reads. */
 export interface JobState {
@@ -17,6 +17,12 @@ export interface JobState {
   name: string | null;
   cwd: string | null;
   tokens: number | null;
+  /** The daemon's one-line summary of what the session last did ("plan committed", "stopped"). */
+  detail: string | null;
+  /** `working`, `idle`, or `blocked` (the session waits on input). */
+  tempo: string | null;
+  /** What the session waits on when `tempo` is `blocked` ("send a prompt to start"). */
+  needs: string | null;
   /** The transcript path the daemon scans, when it has recorded one. */
   linkScanPath: string | null;
   createdAt: string | null;
@@ -46,6 +52,9 @@ export function readJobState(jobId: string): JobState | null {
     name: str(raw.name),
     cwd: str(raw.cwd),
     tokens: typeof raw.tokens === "number" ? raw.tokens : null,
+    detail: str(raw.detail),
+    tempo: str(raw.tempo),
+    needs: str(raw.needs),
     linkScanPath: str(raw.linkScanPath),
     createdAt: str(raw.createdAt),
     updatedAt: str(raw.updatedAt),
@@ -117,14 +126,17 @@ function newest(...times: (string | null)[]): string | null {
   return best;
 }
 
-/** Join the three sources for one run. */
-export async function status(db: Database, runId: string): Promise<RunStatus> {
-  const run = getRun(db, runId);
-  if (!run) throw new RunnerError(`Unknown run ${runId}`);
-  const job = run.jobId ? readJobState(run.jobId) : null;
-  const daemon = run.jobId
-    ? (await listDaemonSessions()).find((s) => s.id === run.jobId)
-    : undefined;
+/**
+ * Join the three sources for one run, from inputs the caller already holds. Pure over the DB and
+ * the filesystem: the dashboard lists the daemon's sessions once and reuses them for every run.
+ */
+export function statusFrom(
+  db: Database,
+  run: Run,
+  job: JobState | null,
+  sessions: readonly DaemonSession[],
+): RunStatus {
+  const daemon = run.jobId ? sessions.find((s) => s.id === run.jobId) : undefined;
   const sessionId = run.sessionId ?? job?.sessionId ?? daemon?.sessionId ?? null;
   const alive = !isTerminal(run.state) && daemon?.pid !== null && daemon?.pid !== undefined;
   return {
@@ -133,10 +145,26 @@ export async function status(db: Database, runId: string): Promise<RunStatus> {
     daemonState: daemon?.state ?? null,
     lastActivityAt: newest(
       transcriptMtime(run.cwd, sessionId, job?.linkScanPath),
-      newestHookEventAt(db, runId),
+      newestHookEventAt(db, run.runId),
     ),
     tokens: job?.tokens ?? null,
   };
+}
+
+/** Join the three sources for one run. */
+export async function status(db: Database, runId: string): Promise<RunStatus> {
+  const run = getRun(db, runId);
+  if (!run) throw new RunnerError(`Unknown run ${runId}`);
+  const job = run.jobId ? readJobState(run.jobId) : null;
+  const sessions = run.jobId ? await listDaemonSessions() : [];
+  return statusFrom(db, run, job, sessions);
+}
+
+/** Alive and no activity for `minutes`, from a status already joined. Pure. */
+export function stalledFrom(s: RunStatus, minutes: number, now: number): boolean {
+  if (!s.alive) return false;
+  const last = Date.parse(s.lastActivityAt ?? s.run.createdAt);
+  return now - last > minutes * 60_000;
 }
 
 /** Alive and no sign of progress for `minutes`. A run with no activity yet counts from createdAt. */
@@ -146,8 +174,5 @@ export async function isStalled(
   minutes: number,
   now: number = Date.now(),
 ): Promise<boolean> {
-  const s = await status(db, runId);
-  if (!s.alive) return false;
-  const last = Date.parse(s.lastActivityAt ?? s.run.createdAt);
-  return now - last > minutes * 60_000;
+  return stalledFrom(await status(db, runId), minutes, now);
 }

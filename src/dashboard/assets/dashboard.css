@@ -1,0 +1,516 @@
+/* Last edited: 2026-10-03 18:34 CDT
+   The dashboard's only stylesheet. Phone first: one column with a 16 px gutter, two columns from
+   960 px (Needs you left; Agents and Queue right). Light and dark follow the system. State colors:
+   amber = needs you, red = blocked or an armed Kill, green = running. */
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --text: #1b1f24;
+  --muted: #5d6673;
+  --link: #1f5fbf;
+  --ok: #1c7c46;
+  --ok-bg: #e3f4ea;
+  --warn: #8a5a00;
+  --warn-bg: #fdf1d8;
+  --bad: #b42318;
+  --bad-bg: #fde7e5;
+  /* A filled red that keeps white text readable: the armed Kill button. */
+  --bad-solid: #b42318;
+  --run: #2c5aa0;
+  --run-bg: #e5edfa;
+  --code-bg: #eef0f3;
+  --radius: 10px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216;
+    --surface: #181c22;
+    --border: #2a3039;
+    --text: #e6e9ee;
+    --muted: #98a2b0;
+    --link: #7fb0ff;
+    --ok: #5fd08e;
+    --ok-bg: #12301f;
+    --warn: #f2c063;
+    --warn-bg: #3a2c0d;
+    --bad: #ff8a80;
+    --bad-bg: #3d1614;
+    --bad-solid: #c9372c;
+    --run: #8fb4ff;
+    --run-bg: #17284a;
+    --code-bg: #232932;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    15px / 1.45 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code {
+  font:
+    0.9em ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 24px 0 10px;
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px 10px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--code-bg);
+  color: var(--muted);
+}
+
+.pill-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.pill-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.pill-bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.counts {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.updated.lost {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.layout {
+  padding: 0 16px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.panels {
+  display: grid;
+  gap: 10px;
+}
+
+.panel,
+.card,
+.queue {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.panel,
+.card {
+  padding: 12px 14px;
+  margin: 0 0 10px;
+}
+
+.panels .panel {
+  margin: 0;
+}
+
+.panel-idle {
+  color: var(--muted);
+}
+
+.panel-flag,
+.card-awaiting_human {
+  border-left: 4px solid var(--warn);
+}
+
+.card-blocked {
+  border-left: 4px solid var(--bad);
+}
+
+.card-rebasing {
+  border-left: 4px solid var(--run);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.slot {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.issue {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.age {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--code-bg);
+  color: var(--muted);
+}
+
+.badge-run {
+  background: var(--run-bg);
+  color: var(--run);
+}
+
+.badge-wait {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.badge-bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.title {
+  margin: 6px 0 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.flag {
+  margin: 8px 0 0;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.facts div {
+  display: flex;
+  gap: 6px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.last,
+.reason,
+.links,
+.note,
+.empty {
+  margin: 8px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.empty,
+.muted {
+  color: var(--muted);
+}
+
+.note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.note-warn {
+  color: var(--warn);
+}
+
+/* Short commands in a note stay on one line. */
+.note code {
+  white-space: nowrap;
+}
+
+/* A note under a section heading, above its cards. */
+.note-section {
+  margin: 0 0 10px;
+}
+
+.reason p {
+  margin: 0 0 4px;
+}
+
+.tldr {
+  margin-top: 8px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.tldr p,
+.handoff p {
+  margin: 0 0 6px;
+}
+
+details {
+  margin-top: 8px;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--link);
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.handoff {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.handoff h1 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.handoff h2 {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  margin: 14px 0 6px;
+}
+
+.handoff ul,
+.handoff ol {
+  padding-left: 20px;
+  margin: 0 0 6px;
+}
+
+.handoff pre {
+  overflow-x: auto;
+  background: var(--code-bg);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.handoff pre code {
+  background: none;
+  padding: 0;
+}
+
+.handoff table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.handoff th,
+.handoff td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+}
+
+.kill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.kill {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--bad);
+  cursor: pointer;
+}
+
+.kill.armed {
+  background: var(--bad-solid);
+  border-color: var(--bad-solid);
+  color: #fff;
+}
+
+.kill-msg {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.kill-msg.bad {
+  color: var(--bad);
+}
+
+.queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.q-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.q-row:first-child {
+  border-top: 0;
+}
+
+.q-title {
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.q-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.prio {
+  color: var(--muted);
+}
+
+.status {
+  font-weight: 600;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-wait {
+  color: var(--warn);
+}
+
+.status-run {
+  color: var(--run);
+}
+
+.status-bad {
+  color: var(--bad);
+}
+
+.status-muted {
+  color: var(--muted);
+}
+
+.count {
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+@media (min-width: 960px) {
+  /* The header's content lines up with the centered columns below it. */
+  .top {
+    padding: 14px max(24px, calc((100% - 1232px) / 2)) 12px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    padding: 0 24px 40px;
+  }
+}

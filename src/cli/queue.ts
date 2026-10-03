@@ -1,9 +1,15 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // `marshall queue [--json]` — a dry run of one scheduler tick. Prints the ordered pickable list and,
 // for each issue, what the next tick would do with it and why. Reads Linear and the DB; writes nothing.
 
 import type { Database } from "bun:sqlite";
-import { type CapCounts, countsAfterStart, evaluateCaps, readCapCounts } from "../caps.ts";
+import {
+  type CapCounts,
+  type CapReason,
+  countsAfterStart,
+  evaluateCaps,
+  readCapCounts,
+} from "../caps.ts";
 import { type Config, loadConfig, loadEnv, requireLinearApiKey } from "../config.ts";
 import { migrate, openDb } from "../db/index.ts";
 import {
@@ -18,6 +24,9 @@ import { BLOCKED, getClaim, isLive, liveClaims, orderIssues } from "../scheduler
 
 export type QueueKind = "fresh" | "bounce" | "live" | "blocked" | "human_only";
 
+/** What the next tick does with a row, as one code: a start, or the first rule that stops it. */
+export type QueueStatus = "next_start" | CapReason | "live" | "bounce_limit" | "human_only";
+
 export interface QueueRow {
   identifier: string;
   title: string;
@@ -29,6 +38,7 @@ export interface QueueRow {
   slot: number | null;
   /** Why it would not start, or a note on why it would. */
   reasons: string[];
+  status: QueueStatus;
 }
 
 export interface QueueReport {
@@ -43,7 +53,8 @@ export interface QueueReport {
 export interface QueueDeps {
   db: Database;
   config: Config;
-  linear: LinearClient;
+  /** Only the pickable list is read, so the dashboard can pass its cached copy. */
+  linear: Pick<LinearClient, "listPickable">;
   now: () => Date;
 }
 
@@ -99,6 +110,7 @@ function rowFor(issue: PickableIssue, db: Database, config: Config, counts: CapC
       bounces: 0,
       wouldStart: false,
       reasons: ["human-only label: Marshall never picks this up"],
+      status: "human_only",
     };
   }
   const existing = getClaim(db, issue.id);
@@ -109,6 +121,7 @@ function rowFor(issue: PickableIssue, db: Database, config: Config, counts: CapC
       bounces: existing.bounces,
       wouldStart: false,
       reasons: [`claim row is still live (${existing.state}); step 08 must release it first`],
+      status: "live",
     };
   }
   const unblocked = existing?.state === BLOCKED;
@@ -121,6 +134,7 @@ function rowFor(issue: PickableIssue, db: Database, config: Config, counts: CapC
       bounces,
       wouldStart: false,
       reasons: [`bounce limit: ${bounces} of ${config.maxBounces}; the next tick marks it Blocked`],
+      status: "bounce_limit",
     };
   }
   const check = evaluateCaps(counts, config, { firstStart: !bounce });
@@ -131,6 +145,7 @@ function rowFor(issue: PickableIssue, db: Database, config: Config, counts: CapC
     bounces,
     wouldStart: check.ok,
     reasons: check.ok ? notes : [...notes, ...check.reasons],
+    status: check.ok ? "next_start" : (check.codes[0] as CapReason),
   };
 }
 

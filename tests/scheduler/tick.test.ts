@@ -1,8 +1,8 @@
-// Last edited: 2026-09-21 15:10 CDT
+// Last edited: 2026-10-03 18:25 CDT
 
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPause } from "../../src/caps.ts";
-import { getClaim } from "../../src/scheduler/store.ts";
+import { getClaim, insertEvent, latestBlockEvent } from "../../src/scheduler/store.ts";
 import { orderIssues, tick } from "../../src/scheduler/tick.ts";
 import { pickable } from "./fake-client.ts";
 import {
@@ -223,6 +223,11 @@ describe("tick: bounce limit", () => {
     expect(h.linear.comments[0]?.body).toMatch(/bounced 3 times, the maximum \(3\)/);
     expect(getClaim(h.db, "issue-1")?.state).toBe("blocked");
     expect(eventTypes(h.db)).toEqual(["scheduler.blocked"]);
+    expect(latestBlockEvent(h.db, "issue-1")).toMatchObject({
+      type: "scheduler.blocked",
+      why: "bounce_limit",
+      comment: expect.stringMatching(/bounced 3 times/),
+    });
     expect(h.starts).toHaveLength(0);
     // Not pickable any more, so the next tick does nothing.
     expect((await tick(h.deps)).decisions).toEqual([]);
@@ -328,5 +333,35 @@ describe("tick: human-only label", () => {
     expect(h.linear.calls.filter((c) => c.issueId === "issue-1")).toHaveLength(0);
     expect(getClaim(h.db, "issue-1")).toBeNull();
     expect(result.decisions.find((d) => d.identifier === "CB-2")?.action).toBe("started");
+  });
+});
+
+describe("latestBlockEvent", () => {
+  test("newest block event of any of the four types; old rows have no comment", () => {
+    h = makeHarness();
+    expect(latestBlockEvent(h.db, "issue-1")).toBeNull();
+    insertEvent(h.db, "2026-09-22T10:00:00.000Z", "master.blocked", "issue-1", null, {
+      why: "missing_sections",
+    });
+    insertEvent(h.db, "2026-09-22T11:00:00.000Z", "scheduler.unblocked", "issue-1", null, {});
+    insertEvent(h.db, "2026-09-22T09:00:00.000Z", "master.over_budget", "issue-2", null, {});
+    expect(latestBlockEvent(h.db, "issue-1")).toEqual({
+      type: "master.blocked",
+      ts: "2026-09-22T10:00:00.000Z",
+      why: "missing_sections",
+      comment: null,
+    });
+    insertEvent(h.db, "2026-09-23T10:00:00.000Z", "master.crashed", "issue-1", null, {
+      why: "crashed",
+      comment: "The driver threw.",
+    });
+    expect(latestBlockEvent(h.db, "issue-1")?.comment).toBe("The driver threw.");
+    h.db.run("INSERT INTO events (ts, issue_id, type, payload) VALUES (?, ?, ?, ?)", [
+      "2026-09-24T10:00:00.000Z",
+      "issue-1",
+      "master.blocked",
+      "{not json",
+    ]);
+    expect(latestBlockEvent(h.db, "issue-1")).toMatchObject({ why: null, comment: null });
   });
 });

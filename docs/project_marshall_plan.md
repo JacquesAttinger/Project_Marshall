@@ -1,6 +1,6 @@
 # Project Marshall — Planning Spec (v3)
 
-<!-- Last edited: 2026-09-21 14:55 CDT -->
+<!-- Last edited: 2026-10-03 18:33 CDT -->
 
 ## TLDR
 
@@ -240,7 +240,10 @@ The hand-off gives me enough to decide "merge as-is" or "test by hand."
 - Read-only except Kill. Approve, reject, and reorder happen in GitHub and Linear.
 - Iteration 2 adds one more write: replying to a proposal (Like / Pass + note).
 - Data sources: the orchestrator SQLite DB, `~/.claude/jobs/*/state.json` from `claude --bg`, and the hand-off files.
-- Until the web app exists, `claude agents` in a terminal is the stand-in.
+- Built in iteration 2 as `marshall dashboard` (`docs/dashboard.md`, decisions under section 15).
+  It is a separate process and launchd job on `127.0.0.1:<dashboardPort>`; `tailscale serve` gives the phone an HTTPS address.
+  Server-rendered HTML from pure TypeScript templates, one vanilla JS file, one CSS file, no new dependency.
+  The proposals card waits for step 11.
 
 ## 9. Notifications
 
@@ -324,7 +327,7 @@ Build steps, dependency graph, and parallel waves: [`steps/README.md`](steps/REA
 
 ### Iteration 2 — Dashboard and hardening
 
-- Web dashboard with panels, queue, hand-off cards, and Kill. Tailscale for phone access.
+- Web dashboard with panels, queue, hand-off cards, and Kill. Tailscale for phone access. Built 2026-10-03: `marshall dashboard` (`docs/dashboard.md`).
 - Raise the cap to 3 if usage allows.
 - Linear OAuth agent so status shows natively in Linear.
 - Add approve-and-merge to the dashboard if it turns out to be the action I reach for.
@@ -399,6 +402,23 @@ Every question from v1, with the answer.
 | 23 | Dashboard actions | Read-only plus a Kill button. Approve, reject, reorder stay in GitHub and Linear. |
 | 24 | Voice intake | Deferred. Both options noted for iteration 3. |
 | 25 | Marshall north star | Split open-ended goals into Linear issues and reuse the same loop. No separate project agent. |
+
+### Dashboard decisions — 2026-10-03
+
+From the grilling before the dashboard was built (`docs/dashboard_plan.md`).
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | v1 scope | Full section 8: status strip, "needs you" cards, agent panels, queue with cap status, Kill. No proposals card (step 11 is not built). |
+| 2 | Access | Mac + phone over Tailscale. The server listens on `127.0.0.1` only; `tailscale serve` gives the tailnet an HTTPS URL. No login code. |
+| 3 | Process | Separate `marshall dashboard` process with its own launchd job (`com.jacques.marshall-dashboard`). It shows "daemon down" when the daemon is down. `marshall start/stop` do not touch it. |
+| 4 | Frontend | Server-rendered HTML from pure TypeScript template functions + one vanilla JS file + one CSS file. No framework, no build step, no new dependency. |
+| 5 | Laptop off | Accepted. Laptop off means agents off too. Hand-offs stay readable in Linear and GitHub. An always-on machine (10.3) fixes it later with no dashboard change. |
+| 6 | Queue data | The dashboard calls `collectQueue()` with its own read-only Linear client, cached 60 s. |
+| 7 | Kill | Two taps: the first turns the button red for 4 s. Same logic as `marshall kill`: flag when the daemon is alive, direct kill + Blocked when it is not. |
+| 8 | Hand-off cards | TLDR, state badge, PR and Linear links; a native `<details>` "Show hand-off" opens the full six sections. Blocked cards show the block reason. |
+| 9 | Phone order | Status strip → Needs you → Agents → Queue. Wide screens use two columns. |
+| 10 | Tracking | No Linear issue. Plan doc + PR only, like steps 01–09. |
 
 ### Still open
 

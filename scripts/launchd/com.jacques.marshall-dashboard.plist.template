@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Marshall dashboard LaunchAgent. Rendered by scripts/install-launchd.sh; {{BUN}}, {{REPO}},
+     {{HOME}}, {{CLAUDE}}, and {{PATH}} are filled in there, as for the daemon's plist.
+     Its own job, so the page stays up (and says "daemon down") when the daemon stops; marshall
+     start / stop never touch it. No caffeinate: serving a page is no reason to keep the laptop awake.
+     Its own logs: the daemon's rotateLogs() renames launchd.*.log at each daemon start.
+     WorkingDirectory is the repo so Bun finds .env for the Linear key (the queue needs it).
+     PATH and MARSHALL_CLAUDE_BIN let it list the daemon's sessions (claude agents) for stall checks.
+     Last edited: 2026-10-03 18:28 CDT -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jacques.marshall-dashboard</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>exec {{BUN}} {{REPO}}/bin/marshall dashboard</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{{REPO}}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MARSHALL_QUIET</key>
+    <string>1</string>
+    <key>MARSHALL_CLAUDE_BIN</key>
+    <string>{{CLAUDE}}</string>
+    <key>PATH</key>
+    <string>{{PATH}}</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{HOME}}/.marshall/logs/dashboard.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{HOME}}/.marshall/logs/dashboard.err.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ProcessType</key>
+  <string>Standard</string>
+</dict>
+</plist>

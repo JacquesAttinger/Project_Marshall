@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:55 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // Every path Marshall writes to derives from one root: MARSHALL_HOME or ~/.marshall.
 // Paths under the Claude daemon's home (CLAUDE_CONFIG_DIR or ~/.claude) are read-only for us.
 
@@ -13,10 +13,15 @@ export function expandTilde(p: string): string {
   return p;
 }
 
+/** `~/.marshall`: the state root when MARSHALL_HOME is unset, and always the launchd daemon's. */
+export function defaultMarshallHome(): string {
+  return resolve(expandTilde("~/.marshall"));
+}
+
 /** Root of Marshall's state: `MARSHALL_HOME`, else `~/.marshall`. */
 export function marshallHome(): string {
   const override = process.env.MARSHALL_HOME;
-  return resolve(expandTilde(override && override.length > 0 ? override : "~/.marshall"));
+  return override && override.length > 0 ? resolve(expandTilde(override)) : defaultMarshallHome();
 }
 
 export function dbPath(): string {
