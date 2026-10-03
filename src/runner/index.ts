@@ -1,4 +1,4 @@
-// Last edited: 2026-09-20 23:40 CDT
+// Last edited: 2026-10-03 18:15 CDT
 // Public API of the agent runner. Step 08 imports from here and nowhere else in src/runner.
 
 export { claudeBin } from "./claude.ts";
@@ -23,7 +23,9 @@ export {
   type JobState,
   listDaemonSessions,
   readJobState,
+  stalledFrom,
   status,
+  statusFrom,
   transcriptMtime,
 } from "./status.ts";
 export {
@@ -34,6 +36,7 @@ export {
   latestRunInCwd,
   latestRunNamed,
   listActiveRuns,
+  newestHookEventAt,
 } from "./store.ts";
 export type {
   Effort,

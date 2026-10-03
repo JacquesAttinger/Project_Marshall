@@ -1,4 +1,4 @@
-// Last edited: 2026-09-19 22:55 CDT
+// Last edited: 2026-10-03 18:17 CDT
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
@@ -8,10 +8,13 @@ import {
   isStalled,
   listDaemonSessions,
   readJobState,
+  stalledFrom,
   status,
+  statusFrom,
   transcriptMtime,
 } from "../../src/runner/status.ts";
-import { insertHookEvent, insertRun, updateRun } from "../../src/runner/store.ts";
+import { getRun, insertHookEvent, insertRun, updateRun } from "../../src/runner/store.ts";
+import type { Run } from "../../src/runner/types.ts";
 import { type RunnerEnv, setFakeAgents, useRunnerEnv } from "./helpers.ts";
 
 let env: RunnerEnv;
@@ -52,6 +55,14 @@ describe("readJobState", () => {
     expect(s?.linkScanPath).toBeNull();
     expect(s?.firstTerminalAt).toBeNull();
     expect(s?.updatedAt).toBe(s?.createdAt as string);
+  });
+
+  test("reads the dashboard fields: detail, tempo, needs", () => {
+    const s = readJobState("job00001");
+    expect(s?.detail).toBe("**TLDR:** redacted");
+    expect(s?.tempo).toBe("blocked");
+    expect(s?.needs).toBe("send a prompt to start");
+    expect(readJobState("job00002")?.needs).toBeNull();
   });
 
   test("parses the done shape with tokens and linkScanPath", () => {
@@ -187,5 +198,33 @@ describe("isStalled", () => {
   test("no activity at all counts from createdAt", async () => {
     expect(await isStalled(env.db, "r", 5, now)).toBe(true);
     expect(await isStalled(env.db, "r", 90, now)).toBe(false);
+  });
+});
+
+describe("statusFrom", () => {
+  test("joins a run with a roster the caller already listed, without spawning claude", () => {
+    insertRun(env.db, { runId: "r", name: "n", cwd: CWD }, "2026-09-19T20:00:00.000Z");
+    updateRun(env.db, "r", { jobId: "job00002", state: "running" });
+    insertHookEvent(env.db, "r", "SessionStart", "2026-09-19T20:05:00.000Z", {});
+    const run = getRun(env.db, "r") as Run;
+    const roster = [
+      {
+        id: "job00002",
+        pid: 4242,
+        cwd: CWD,
+        sessionId: SESSION_1,
+        name: "n",
+        state: "working",
+        startedAt: 1,
+      },
+    ];
+    const s = statusFrom(env.db, run, readJobState("job00002"), roster);
+    expect(s.alive).toBe(true);
+    expect(s.tokens).toBe(2103);
+    expect(s.lastActivityAt).toBe("2026-09-19T20:05:00.000Z");
+    expect(statusFrom(env.db, run, null, []).alive).toBe(false);
+    const now = Date.parse("2026-09-19T21:00:00.000Z");
+    expect(stalledFrom(s, 30, now)).toBe(true);
+    expect(stalledFrom(s, 90, now)).toBe(false);
   });
 });
