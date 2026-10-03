@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:10 CDT
+// Last edited: 2026-10-03 18:30 CDT
 
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -110,6 +110,7 @@ describe("window cap on a true rolling window", () => {
     expect(check.reasons).toEqual([
       `window: 2 of 2 starts in the last 5 h (next slot at ${freesAt})`,
     ]);
+    expect(check.codes).toEqual(["window_cap"]);
     // One hour later the oldest start has rolled off.
     expect(capCheck(db, config, minutesAgo(-61), { firstStart: true }).ok).toBe(true);
   });
@@ -118,13 +119,21 @@ describe("window cap on a true rolling window", () => {
 describe("firstStart: false", () => {
   test("skips the daily and window checks but not concurrency", () => {
     for (let i = 0; i < 6; i++) startAt(minutesAgo(10 * i), `CB-${i}`);
-    expect(capCheck(db, config, NOW, { firstStart: true }).reasons).toHaveLength(2);
-    expect(capCheck(db, config, NOW, { firstStart: false })).toEqual({ ok: true, reasons: [] });
+    expect(capCheck(db, config, NOW, { firstStart: true }).codes).toEqual([
+      "daily_cap",
+      "window_cap",
+    ]);
+    expect(capCheck(db, config, NOW, { firstStart: false })).toEqual({
+      ok: true,
+      reasons: [],
+      codes: [],
+    });
     insertClaim("CB-1", 0, "claimed");
     insertClaim("CB-2", 1, "claimed");
     expect(capCheck(db, config, NOW, { firstStart: false }).reasons).toEqual([
       "concurrency: 2 of 2 agents busy",
     ]);
+    expect(capCheck(db, config, NOW, { firstStart: false }).codes).toEqual(["slots_full"]);
   });
 });
 
@@ -140,6 +149,7 @@ describe("pause flag", () => {
     expect(capCheck(db, config, NOW, { firstStart: false }).reasons).toEqual([
       `paused until ${until.toISOString()}`,
     ]);
+    expect(capCheck(db, config, NOW, { firstStart: false }).codes).toEqual(["rate_limited"]);
     setPause(db, null);
     expect(pauseUntil(db)).toBeNull();
   });
@@ -160,6 +170,7 @@ describe("pause flag", () => {
     expect(capCheck(db, config, NOW, { firstStart: true }).reasons).toEqual([
       `paused by \`marshall pause\` at ${NOW.toISOString()}`,
     ]);
+    expect(capCheck(db, config, NOW, { firstStart: true }).codes).toEqual(["paused"]);
     expect(readCapCounts(db, config, NOW).pausedAt).toBe(NOW.toISOString());
     setManualPause(db, null);
     expect(isPaused(db, NOW)).toBe(false);

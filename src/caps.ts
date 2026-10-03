@@ -1,4 +1,4 @@
-// Last edited: 2026-09-21 00:10 CDT
+// Last edited: 2026-10-03 18:28 CDT
 // The three start caps (concurrency, calendar day, rolling window) and the two pause flags. Pure
 // over the DB and an injected clock, so tests pin `now`. `readCapCounts` + `evaluateCaps` are split
 // so `marshall queue` can simulate a tick by bumping the counts it would have produced.
@@ -37,10 +37,15 @@ export interface CapCounts {
   pausedAt: string | null;
 }
 
+/** One failed rule, as a code the dashboard renders without parsing the text. */
+export type CapReason = "paused" | "rate_limited" | "slots_full" | "daily_cap" | "window_cap";
+
 export interface CapCheck {
   ok: boolean;
   /** Human-readable, one per failed rule. Empty when ok. */
   reasons: string[];
+  /** The same rules as codes, in the same order as `reasons`. */
+  codes: CapReason[];
 }
 
 export interface CapOptions {
@@ -124,25 +129,32 @@ export function readCapCounts(db: Database, config: Config, now: Date): CapCount
 /** Apply the rules to a snapshot. Pure. */
 export function evaluateCaps(counts: CapCounts, config: Config, opts: CapOptions): CapCheck {
   const reasons: string[] = [];
-  if (counts.pausedAt) reasons.push(`paused by \`marshall pause\` at ${counts.pausedAt}`);
-  if (counts.pausedUntil) reasons.push(`paused until ${counts.pausedUntil}`);
+  const codes: CapReason[] = [];
+  const fail = (code: CapReason, reason: string) => {
+    codes.push(code);
+    reasons.push(reason);
+  };
+  if (counts.pausedAt) fail("paused", `paused by \`marshall pause\` at ${counts.pausedAt}`);
+  if (counts.pausedUntil) fail("rate_limited", `paused until ${counts.pausedUntil}`);
   if (counts.live >= config.maxAgents) {
-    reasons.push(`concurrency: ${counts.live} of ${config.maxAgents} agents busy`);
+    fail("slots_full", `concurrency: ${counts.live} of ${config.maxAgents} agents busy`);
   }
   if (opts.firstStart) {
     if (counts.today >= config.dailyStartCap) {
-      reasons.push(
+      fail(
+        "daily_cap",
         `daily: ${counts.today} of ${config.dailyStartCap} starts used today (resets at local midnight)`,
       );
     }
     if (counts.window >= config.windowStartCap) {
       const when = counts.windowFreesAt ? ` (next slot at ${counts.windowFreesAt})` : "";
-      reasons.push(
+      fail(
+        "window_cap",
         `window: ${counts.window} of ${config.windowStartCap} starts in the last ${config.windowHours} h${when}`,
       );
     }
   }
-  return { ok: reasons.length === 0, reasons };
+  return { ok: reasons.length === 0, reasons, codes };
 }
 
 export function capCheck(db: Database, config: Config, now: Date, opts: CapOptions): CapCheck {
