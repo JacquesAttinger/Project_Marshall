@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:40 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // `requestKill` (src/kill.ts), branch by branch: no claim, not live, the flag with a live
 // orchestrator (pidfile, or launchd running with no pidfile yet), a resolver it refuses, and the
 // direct path with no orchestrator. The fake runner env stands in for `claude stop`; Linear is

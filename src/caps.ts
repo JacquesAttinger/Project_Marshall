@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:28 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // The three start caps (concurrency, calendar day, rolling window) and the two pause flags. Pure
 // over the DB and an injected clock, so tests pin `now`. `readCapCounts` + `evaluateCaps` are split
 // so `marshall queue` can simulate a tick by bumping the counts it would have produced.

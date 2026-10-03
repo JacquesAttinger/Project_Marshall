@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:36 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // `marshall kill <identifier>`: a thin wrapper over `requestKill` (src/kill.ts), which the
 // dashboard's Kill button calls too. This file opens the DB, connects to Linear only when the
 // direct path needs it, and prints the result.

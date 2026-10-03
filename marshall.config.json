@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:45 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // Marshall's settings. Comments are allowed here (JSONC); secrets go in .env, not in this file.
 // The daemon and the dashboard each read this once at start: after a change, restart them
 // (`marshall stop && marshall start`; the dashboard's restart is in docs/runbook.md).

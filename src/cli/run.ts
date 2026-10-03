@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:45 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // `marshall run [--once]` — the orchestrator: reconcile, then loop with the real master agent
 // hooks until SIGINT or SIGTERM. `--once` does one reconcile + tick + pulse + notify tick and
 // exits, for a manual check. launchd runs this command (scripts/launchd/); it rotates the logs

@@ -1,4 +1,4 @@
-// Last edited: 2026-10-03 18:36 CDT
+// Last edited: 2026-10-03 18:27 CDT
 // Stop one issue's agent and park the issue in Blocked; `marshall kill` and the dashboard's Kill
 // button both call `requestKill`. With a live orchestrator, write the kill flag and let its pulse
 // do the work in-process: no race with a master agent that is mid-transition. Without one, do it
