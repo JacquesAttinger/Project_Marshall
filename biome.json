@@ -39,7 +39,7 @@
   },
   "overrides": [
     {
-      "includes": ["marshall.config.json"],
+      "includes": ["marshall.config.json", "marshall.vm.config.json"],
       "json": {
         "parser": {
           "allowComments": true
