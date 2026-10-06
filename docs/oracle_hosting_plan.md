@@ -1,4 +1,4 @@
-<!-- Last edited: 2026-10-03 -->
+<!-- Last edited: 2026-10-06 16:15 CDT -->
 
 # Plan: Host Marshall on an Oracle Always Free VM
 
@@ -51,6 +51,10 @@ Research findings that shape this plan:
 4. **GitHub auth:** a fine-grained personal access token scoped to the target repo only.
 5. **State:** start with a fresh `~/.marshall` on the VM.
    Do not copy the Mac database.
+6. **Target repo:** Jacques's private fork `JacquesAttinger/ChessBuddy`, not TickTick.
+   TickTick is a macOS app that needs Xcode (`make test` runs `xcodebuild`), so no Linux host can build it.
+   TickTick work stays on the Mac launchd copy, which uses `marshall.config.json`.
+   The VM uses `marshall.vm.config.json`, set through `MARSHALL_CONFIG`.
 
 ## Step 0: Prove the risky parts first (30 min, before any hosting work)
 
@@ -60,10 +64,14 @@ Run them on the VM as soon as it exists.
 1. `claude --version` on Linux arm64 is at least 2.1.278.
    `claude --bg --name probe "say hi"` prints `Started background session <8hex>`.
    `claude stop <id>` stops it.
+   Result (2026-10-05): passes on Claude Code 2.1.289, Linux arm64.
+   The launch text is now `backgrounded · <8hex> · <name>`, and the job-id parser in `src/runner/launch.ts` still finds the id.
 2. `bun --version` is 1.4.2 on linux-aarch64.
    `bun test` in Project_Marshall passes (CI already runs it on Ubuntu x86).
-3. The TickTick toolchain (the target repo) installs and its tests run on arm64.
-   If a tool has no arm64 build, stop here and use the Azure fallback.
+3. The target repo's toolchain installs and its tests run on arm64.
+   Result (2026-10-05): TickTick fails this check, because it needs Xcode.
+   ChessBuddy passes: `uv run pytest` gives 691 passed, and `docker compose up --build --wait` is healthy on arm64.
+   Run this check again for any new target repo.
 
 ## Step 1: Oracle account
 
@@ -85,7 +93,7 @@ Run them on the VM as soon as it exists.
    After a day of failures, use the Azure fallback.
 3. Network: open inbound TCP 22 only.
    Marshall needs no inbound ports (Linear, GitHub, and ntfy are outbound HTTPS).
-4. Add 4 GB of swap.
+4. Add 4 GB of swap (`/swapfile`, kept in `/etc/fstab`).
    Three agents with builds can spike memory.
 
 ## Step 3: Install tools
@@ -96,10 +104,18 @@ On the VM, as a normal user (not root):
 2. Bun, pinned to the CI version: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.2"`.
 3. Claude Code, with the official installer.
 4. GitHub CLI `gh`, from the apt repo.
-5. Anything the TickTick repo needs (check its README): for example pnpm, uv, Python.
-6. Docker engine and the compose plugin, only if a plan needs Compose.
-   `marshall.config.json` has `"services": {}`, so skip it for now.
-7. Harden SSH: key login only, no root login.
+5. What ChessBuddy needs: `uv`, Node 24 with Corepack (which gives pnpm 11), and Stockfish.
+   On Ubuntu, Stockfish installs to `/usr/games/stockfish`, which is not on the default `PATH`.
+6. Docker engine and the compose plugin (`docker.io`, `docker-compose-v2`).
+   `marshall.vm.config.json` sets `services` for the ChessBuddy stack.
+   Add the user to the `docker` group.
+7. Harden SSH: Ubuntu already sets key-only login.
+   Add `PermitRootLogin no` in `/etc/ssh/sshd_config.d/99-marshall-hardening.conf`.
+8. Trust prompts.
+   `claude --bg` refuses to start in a folder you have not trusted: "Workspace not trusted".
+   Trust is per git repo, and a trusted parent folder does not cover a git repo inside it.
+   Run `ssh -t ... claude` once in `~/code/ChessBuddy` and accept the prompt.
+   Check that a new worktree under it inherits this trust, or accept the prompt for each.
 
 ## Step 4: Logins and secrets
 
@@ -108,13 +124,23 @@ On the VM, as a normal user (not root):
    Save the output on the VM in `~/.marshall-secrets.env` as `CLAUDE_CODE_OAUTH_TOKEN=...`.
    Run `chmod 600` on that file.
 2. **GitHub.**
-   Create a fine-grained token with contents and pull-request write access to the TickTick repo only.
+   The upstream repo `dvairus/ChessBuddy` is owned by another person, and a fine-grained token cannot reach it.
+   So the agents use the fork, and PRs land in the fork.
+   Create a fine-grained token with resource owner `JacquesAttinger`, only the fork selected, and these repository permissions:
+   Contents (read and write), Pull requests (read and write), Actions (read), and Commit statuses (read).
+   There is no "Checks" permission for personal tokens.
+   Leave Workflows off, so agents cannot edit CI files.
+   Not yet verified: that `gh pr checks` works with this set.
+   Load the token with `read -rs` in a Terminal, so it never enters the chat.
    Run `gh auth login --with-token`, then `gh auth setup-git`.
    Set `git config --global user.name` and `user.email`.
+   The token cannot call the fork's "sync with upstream" API.
+   To update the fork, push upstream `main` to the fork from the Mac (fast-forward only).
 3. **Linear.**
    Put `MARSHALL_LINEAR_API_KEY` in `~/code/Project_Marshall/.env`.
-   The key location is in your memory notes: it lives only in the Mac repo `.env`.
-   Copy it over with `scp`, not through chat.
+   The key must belong to the workspace in the config: `chessbuddy` for the VM.
+   The Mac `.env` key belongs to `todo-timer`, so make a separate key for the VM.
+   Load it without chat, and check its workspace before you send it.
 4. **ntfy.**
    Copy `NTFY_TOPIC_PREFIX` the same way.
 5. Security note: agents run with `--permission-mode bypassPermissions`.
@@ -124,11 +150,13 @@ On the VM, as a normal user (not root):
 ## Step 5: Install Marshall
 
 1. `mkdir -p ~/code && cd ~/code`.
-2. Clone Project_Marshall and the TickTick repo.
-   TickTick must be at `~/code/TickTick`, because `repoPath` in `marshall.config.json:11` points there.
+2. Clone Project_Marshall and your ChessBuddy fork.
+   The fork must be at `~/code/ChessBuddy`, because `repoPath` in `marshall.vm.config.json` points there.
+   Keep the fork's `main` level with upstream before you start.
 3. In Project_Marshall: `HUSKY=0 bun install --frozen-lockfile`.
-4. `bin/marshall db migrate`, then `bin/marshall linear setup` (idempotent), then `bin/marshall status`.
-   Check that `status` shows the right workspace (`todo-timer`) and no errors.
+4. Set `MARSHALL_CONFIG=marshall.vm.config.json`.
+   Run `bin/marshall db migrate`, then `bin/marshall linear setup` (idempotent), then `bin/marshall status`.
+   Check that `status` shows the right workspace (`chessbuddy`) and no errors.
 
 ## Step 6: Smoke tests
 
@@ -159,7 +187,8 @@ ExecStart=%h/.bun/bin/bun %h/code/Project_Marshall/bin/marshall run
 EnvironmentFile=%h/.marshall-secrets.env
 Environment=MARSHALL_QUIET=1
 Environment=MARSHALL_CLAUDE_BIN=%h/.local/bin/claude
-Environment=PATH=%h/.bun/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=MARSHALL_CONFIG=%h/code/Project_Marshall/marshall.vm.config.json
+Environment=PATH=%h/.bun/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/games
 Restart=always
 RestartSec=30
 KillMode=process
@@ -171,7 +200,7 @@ WantedBy=default.target
 Notes:
 
 - `WorkingDirectory` matters because Bun loads `.env` from the working directory.
-- The `PATH` line is required.
+- The `PATH` line is required, and `/usr/games` is needed for Stockfish.
   Without `claude` and `bun` on PATH, issues block with `classifier_failed` (see the plist comment in `scripts/launchd/com.jacques.marshall.plist.template`).
 - `KillMode=process` is my guess to protect running agents.
   By default systemd kills every process in the unit's cgroup, which may include the Claude background daemon.
@@ -231,7 +260,8 @@ A first-class Linux path, so `marshall start|stop|status` work on Linux:
 | No free A1 capacity | Cannot create the VM | Retry; Azure fallback |
 | Idle reclaim | VM deleted | Pay As You Go (verify); weekly backup |
 | `claude --bg` fails on Linux arm64 | Marshall cannot launch agents | Step 0; fall back to x86 on Azure |
-| TickTick tools lack arm64 builds | Agents cannot run tests | Step 0; Azure x86 fallback |
+| Target repo needs macOS tools | Agents cannot build or test | Step 0; pick a repo that builds on Linux |
+| Fork falls behind upstream | Agents branch from old code | Fast-forward the fork from the Mac before runs |
 | Token leak on a bypass-permissions host | Claude and GitHub abuse | Scoped GitHub token, `chmod 600`, single-purpose VM |
 | Two daemons running | Double claims | Cutover order in Step 8 |
 | Oracle shrinks the free tier again | Less memory | Lower `maxAgents` in `marshall.config.json` |
