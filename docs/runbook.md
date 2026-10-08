@@ -1,6 +1,6 @@
 # Marshall runbook
 
-<!-- Last edited: 2026-10-03 18:31 CDT -->
+<!-- Last edited: 2026-10-08 13:57 CDT -->
 
 **TLDR:** Marshall runs as a launchd agent on the desk laptop.
 `scripts/install-launchd.sh` installs it, `marshall status` and the dashboard show what it is doing, `marshall stop` / `start` / `pause` / `resume` / `kill` control it, and ntfy pushes tell your phone when an issue needs you.
@@ -31,6 +31,18 @@ Rerun the script after moving the repo or changing the template; it boots the ol
 
 Uninstall: `bash scripts/uninstall-launchd.sh daemon` (or `dashboard`, or `all`).
 State under `~/.marshall` stays.
+
+### Linux (systemd)
+
+launchd is macOS-only.
+On Linux, run `bash scripts/install-systemd.sh` from the main checkout instead.
+It renders `scripts/systemd/marshall.service.template` into a systemd user service and starts it.
+Set `MARSHALL_CONFIG` first if the host uses another config file, and run `sudo loginctl enable-linger $USER` once so the service starts at boot.
+`marshall start` and `marshall stop` do not work on Linux, and `marshall status` shows `launchd is macOS-only`.
+Use `systemctl --user start|stop|restart|status marshall` instead.
+`KillMode=process` in the unit keeps live agents running through a restart.
+One known gap: a restart during the planning phase starts a second planner for the same issue.
+`docs/oracle_hosting_plan.md` has the full Oracle VM setup and test results.
 
 ## Start, stop, pause, resume, kill
 
