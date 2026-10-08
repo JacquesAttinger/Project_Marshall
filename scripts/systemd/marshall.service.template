@@ -1,0 +1,32 @@
+# Marshall systemd user unit. Rendered by scripts/install-systemd.sh.
+# {{BUN}}, {{REPO}}, {{CLAUDE}}, {{CONFIG}}, and {{PATH}} are filled in there.
+# WorkingDirectory is the repo, so Bun finds .env for the Linear key and the ntfy prefix.
+# EnvironmentFile holds CLAUDE_CODE_OAUTH_TOKEN. The "-" makes the file optional.
+# PATH and MARSHALL_CLAUDE_BIN are set here because a user service does not read your shell profile.
+# Without them every issue blocks on classifier_failed.
+# KillMode=process stops only bun on a restart.
+# The Claude background daemon and its agents live in the same cgroup and keep running.
+# The next start reconciles them. Tested on Ubuntu 24.04 aarch64 (docs/oracle_hosting_plan.md, Step 7).
+# Restart=always with RestartSec=30 matches launchd KeepAlive with ThrottleInterval 30.
+# WantedBy=default.target plus "loginctl enable-linger" starts it at boot without a login.
+# Last edited: 2026-10-08 13:56 CDT
+
+[Unit]
+Description=Marshall
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory={{REPO}}
+ExecStart={{BUN}} {{REPO}}/bin/marshall run
+EnvironmentFile=-%h/.marshall-secrets.env
+Environment=MARSHALL_QUIET=1
+Environment=MARSHALL_CLAUDE_BIN={{CLAUDE}}
+Environment=MARSHALL_CONFIG={{CONFIG}}
+Environment=PATH={{PATH}}
+Restart=always
+RestartSec=30
+KillMode=process
+
+[Install]
+WantedBy=default.target

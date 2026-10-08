@@ -1,4 +1,4 @@
-<!-- Last edited: 2026-10-06 16:15 CDT -->
+<!-- Last edited: 2026-10-08 13:57 CDT -->
 
 # Plan: Host Marshall on an Oracle Always Free VM
 
@@ -48,7 +48,11 @@ Research findings that shape this plan:
    An API key costs money and defeats the goal.
 3. **Supervisor:** a hand-written systemd user unit around `bin/marshall run`.
    No repo code change in the first pass.
-4. **GitHub auth:** a fine-grained personal access token scoped to the target repo only.
+4. **GitHub auth:** a classic personal access token with scopes `repo` and `read:org` only.
+   Never add `admin:org`.
+   Do not authorize the token for the Hemut org (SSO).
+   A fine-grained token does not work here.
+   It cannot reach another person's repo, and it has no Checks permission, so `gh pr checks` fails with it.
 5. **State:** start with a fresh `~/.marshall` on the VM.
    Do not copy the Mac database.
 6. **Target repo:** Jacques's private fork `JacquesAttinger/ChessBuddy`, not TickTick.
@@ -124,13 +128,16 @@ On the VM, as a normal user (not root):
    Save the output on the VM in `~/.marshall-secrets.env` as `CLAUDE_CODE_OAUTH_TOKEN=...`.
    Run `chmod 600` on that file.
 2. **GitHub.**
-   The upstream repo `dvairus/ChessBuddy` is owned by another person, and a fine-grained token cannot reach it.
+   The upstream repo `dvairus/ChessBuddy` is owned by another person.
    So the agents use the fork, and PRs land in the fork.
-   Create a fine-grained token with resource owner `JacquesAttinger`, only the fork selected, and these repository permissions:
-   Contents (read and write), Pull requests (read and write), Actions (read), and Commit statuses (read).
-   There is no "Checks" permission for personal tokens.
-   Leave Workflows off, so agents cannot edit CI files.
-   Not yet verified: that `gh pr checks` works with this set.
+   Use a **classic** personal access token with only two scopes: `repo` and `read:org`.
+   Do not add `admin:org`.
+   Do not authorize the token for the Hemut org (SSO).
+   `gh auth login --with-token` refuses a token without `read:org`, so that scope is required.
+   Fine-grained tokens do not work for this setup:
+   they cannot reach another person's repo, and they have no Checks permission.
+   With a fine-grained token, `gh pr checks` fails.
+   With the classic token it works (verified 2026-10-08: `gh pr checks 2` on the fork lists the Python and Web checks).
    Load the token with `read -rs` in a Terminal, so it never enters the chat.
    Run `gh auth login --with-token`, then `gh auth setup-git`.
    Set `git config --global user.name` and `user.email`.
@@ -173,7 +180,19 @@ On the VM, as a normal user (not root):
 
 ## Step 7: systemd unit
 
-Create `~/.config/systemd/user/marshall.service`:
+The repo ships the unit as `scripts/systemd/marshall.service.template`.
+`scripts/install-systemd.sh` renders it for this machine and starts it.
+It mirrors `scripts/install-launchd.sh`.
+Run it from the main checkout, with the VM config:
+
+```bash
+sudo loginctl enable-linger $USER
+MARSHALL_CONFIG=$HOME/code/Project_Marshall/marshall.vm.config.json scripts/install-systemd.sh
+```
+
+Use `--dry-run` to print the unit and change nothing.
+The unit it writes is the same as the one below, with absolute paths in place of `%h`.
+This is the unit that passed the tests on the VM:
 
 ```ini
 [Unit]
@@ -200,16 +219,58 @@ WantedBy=default.target
 Notes:
 
 - `WorkingDirectory` matters because Bun loads `.env` from the working directory.
+  That is where the Linear key and the ntfy prefix come from.
 - The `PATH` line is required, and `/usr/games` is needed for Stockfish.
   Without `claude` and `bun` on PATH, issues block with `classifier_failed` (see the plist comment in `scripts/launchd/com.jacques.marshall.plist.template`).
-- `KillMode=process` is my guess to protect running agents.
-  By default systemd kills every process in the unit's cgroup, which may include the Claude background daemon.
-  The launchd docs say a stop leaves live agents running and the next start reconciles them.
-  Test this: start an agent, run `systemctl --user restart marshall`, and confirm the agent survives.
-  If it does not, move the agents out of the unit's cgroup or accept that a restart parks them.
-- Run `sudo loginctl enable-linger $USER` so the unit runs without a login session.
-- Then: `systemctl --user daemon-reload && systemctl --user enable --now marshall`.
+- Linger is required, so the unit runs without a login session.
+  `sudo loginctl enable-linger $USER`.
+- Manual start: `systemctl --user daemon-reload && systemctl --user enable --now marshall`.
   Logs: `journalctl --user -u marshall -f` and `~/.marshall/logs/marshall.log`.
+- Over non-interactive ssh, `systemctl --user` worked without extra variables on this VM.
+  If you get a bus error, set `XDG_RUNTIME_DIR=/run/user/$(id -u)` and `DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus`.
+
+### What the tests showed (2026-10-08, Ubuntu 24.04 aarch64, Claude Code 2.1.292)
+
+Start:
+
+- `systemctl --user status marshall` showed `active (running)`.
+- `bin/marshall status` showed the daemon alive and workspace `chessbuddy`.
+- The log showed `run.started` with `"notify":true`, so `NTFY_TOPIC_PREFIX` loaded from `.env`.
+
+Restart test (`systemctl --user restart marshall` while the planner for a throwaway issue ran):
+
+- With `KillMode=process`, the Claude background daemon and the agent stayed alive.
+  The agent kept its pid in `claude agents --json`, and it finished normally.
+  The Claude background daemon runs inside the `marshall.service` cgroup.
+  `KillMode=process` is what keeps it alive, so no `systemd-run` workaround is needed.
+- The new daemon logged `reconcile.kept` with `state: planning` and `why: alive`.
+- Then the plan phase failed with `launch_failed: attachRunId needs a model` (`src/plan/phase.ts`).
+  The cause: `src/phases/plan.ts` passes `attachRunId` but no model.
+  The claim stores the model only after the plan succeeds, so a restart during planning has no model to attach with.
+  The retry path then reset the worktree and launched a second planner for the same issue.
+  The first planner kept running beside it until it finished.
+  The second plan was the one used.
+  The issue still reached Needs Verification, with a PR and Linear comments.
+- So a restart during planning wastes one planner run and starts a duplicate.
+  This is a Marshall bug and not a systemd problem.
+  It needs a fix in a separate change: save the model on the claim when the planner launches.
+- Not tested: a restart during the implement or hand-off phase.
+
+Reboot test (`sudo reboot` with no agent running):
+
+- The VM answered ssh again about 15 s after the reboot.
+- `systemctl --user is-active marshall` gave `active`, and `is-enabled` gave `enabled`.
+- `bin/marshall status` showed the daemon alive with a new pid.
+- The log showed `reconcile.kept` for both parked issues, then `run.started` with `"notify":true`.
+
+Full run on the VM (issue CHE-38, with the Mac closed):
+
+- Todo to planning to implementing to hand-off to Needs Verification took about 9 minutes.
+- PR #2 opened on `JacquesAttinger/ChessBuddy`.
+  Marshall posted two Linear comments (the plan, and the hand-off).
+- `gh pr checks 2` worked from the VM and listed both checks as pass.
+- The log shows one `notify.pushed` event (`master.finished`).
+  I cannot see the phone, so I did not confirm that the push arrived.
 
 ## Step 8: Cutover
 
@@ -238,7 +299,7 @@ A first-class Linux path, so `marshall start|stop|status` work on Linux:
 
 - Add a systemd runner next to `src/launchd.ts`.
   The file already takes injectable `platform` and `launchctl` dependencies, so the shape fits.
-- Add `scripts/install-systemd.sh` that mirrors `scripts/install-launchd.sh`.
+- `scripts/install-systemd.sh` now exists (see Step 7).
 - Update `docs/runbook.md`, `README.md:130`, and the hosting question (Q20) in `docs/project_marshall_plan.md`.
 - Ship it through a worktree, a PR, and a Linear issue (per your workflow rules).
 - Keep `check:size` limits (500 lines per file, 75 per function).
@@ -249,9 +310,17 @@ A first-class Linux path, so `marshall start|stop|status` work on Linux:
 2. `bin/marshall status` on the VM shows the right workspace and an empty or sane DB.
 3. The live runner test passes (4 agents).
 4. A throwaway Linear issue goes Todo to PR to hand-off on the VM, with your Mac closed.
-5. `systemctl --user restart marshall` mid-run: the agent survives and the daemon reconciles.
-6. Reboot the VM: the unit comes back by itself.
-7. After 7 days: the VM still exists, and `~/.marshall/logs/marshall.log` shows steady polling.
+   Done 2026-10-08 (CHE-38, PR #2).
+5. `gh pr checks <pr>` works from the VM with the classic token.
+   Done 2026-10-08.
+6. `systemctl --user restart marshall` mid-run: the agent survives and the daemon reconciles.
+   Done 2026-10-08 during planning: the agent survived, but the plan phase launched a duplicate planner (see Step 7).
+   Not yet tested during implementing or hand-off.
+7. Reboot the VM: the unit comes back by itself.
+   Done 2026-10-08.
+8. A phone receives the ntfy pushes.
+   The log shows `notify.pushed`, but nobody has confirmed the phone yet.
+9. After 7 days: the VM still exists, and `~/.marshall/logs/marshall.log` shows steady polling.
 
 ## Risks
 
@@ -262,6 +331,6 @@ A first-class Linux path, so `marshall start|stop|status` work on Linux:
 | `claude --bg` fails on Linux arm64 | Marshall cannot launch agents | Step 0; fall back to x86 on Azure |
 | Target repo needs macOS tools | Agents cannot build or test | Step 0; pick a repo that builds on Linux |
 | Fork falls behind upstream | Agents branch from old code | Fast-forward the fork from the Mac before runs |
-| Token leak on a bypass-permissions host | Claude and GitHub abuse | Scoped GitHub token, `chmod 600`, single-purpose VM |
+| Token leak on a bypass-permissions host | Claude and GitHub abuse | Classic token with `repo` and `read:org` only (no `admin:org`, no Hemut SSO), `chmod 600`, single-purpose VM |
 | Two daemons running | Double claims | Cutover order in Step 8 |
 | Oracle shrinks the free tier again | Less memory | Lower `maxAgents` in `marshall.config.json` |
